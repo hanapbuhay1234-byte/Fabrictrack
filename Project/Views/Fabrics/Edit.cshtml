@@ -1,0 +1,100 @@
+@model FabriTrack.Models.Fabric
+@{
+    ViewData["Title"] = "Edit Fabric";
+}
+
+<h2 class="mb-3"><i class="bi bi-pencil-square me-2"></i>Edit fabric</h2>
+
+<div class="form-card">
+    <form asp-action="Edit" method="post" enctype="multipart/form-data" class="row row-cols-1 row-cols-md-2 g-3">
+        <input type="hidden" asp-for="FabricId" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+        <div class="col-12">
+            <h4 class="mb-0">Fabric details</h4>
+            <hr />
+        </div>
+
+        <div class="col">
+            <label class="form-label">Name</label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+            <div class="form-text">A short, descriptive name for the fabric.</div>
+        </div>
+
+        <div class="col">
+            <label class="form-label">Category</label>
+            <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.CategoryId"></select>
+            <div class="form-text">Select the category this fabric belongs to.</div>
+        </div>
+
+        <div class="col">
+            <label class="form-label">Color</label>
+            <input asp-for="Color" class="form-control" />
+            <div class="form-text">Optional (e.g., "Crimson").</div>
+        </div>
+
+        <div class="col">
+            <label class="form-label">Supplier</label>
+            <select asp-for="SupplierId" class="form-select" asp-items="ViewBag.SupplierId"></select>
+            <div class="form-text">Where the fabric was purchased or sourced.</div>
+        </div>
+
+        <div class="col">
+            <label class="form-label">Pattern</label>
+            <input asp-for="Pattern" class="form-control" />
+            <div class="form-text">Optional (e.g., "Herringbone").</div>
+        </div>
+
+        <div class="col">
+            <label class="form-label">Unit</label>
+            <select asp-for="Unit" class="form-select">
+                <option value="yard">Yard</option>
+                <option value="meter">Meter</option>
+            </select>
+            <div class="form-text">Unit used for stock and pricing.</div>
+        </div>
+
+        <div class="col">
+            <label class="form-label">Price / unit</label>
+            <input asp-for="PricePerUnit" class="form-control" type="number" step="0.01" />
+            <div class="form-text">Enter numeric value, e.g., 120.00.</div>
+        </div>
+
+        <div class="col">
+            <label class="form-label">Stock qty</label>
+            <input asp-for="StockQuantity" class="form-control" type="number" step="0.01" />
+            <div class="form-text">Current on-hand quantity in the selected unit.</div>
+        </div>
+
+        <div class="col">
+            <label class="form-label">Image (upload to replace)</label>
+            @{
+                var previewSrc = Html.NormalizeImageUrl(Model.ImageUrl);
+            }
+            @if (!string.IsNullOrWhiteSpace(previewSrc))
+            {
+                <div class="mb-2">
+                    <img src="@previewSrc" alt="@Model.Name" style="max-width:120px;max-height:120px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'; document.getElementById('edit-preview-placeholder').classList.remove('d-none');" />
+                    <div id="edit-preview-placeholder" class="d-none">
+                        <div class="d-flex align-items-center justify-content-center" style="width:120px; height:120px; background:#f6f7fb; border-radius:8px;">
+                            <i class="bi bi-image" style="font-size:1.5rem;color:rgba(0,0,0,0.35);"></i>
+                        </div>
+                    </div>
+                </div>
+            }
+            <input name="ImageFile" type="file" accept="image/*" class="form-control" />
+            <div class="form-text">Leave blank to keep existing image.</div>
+        </div>
+
+        <div class="col-12">
+            <div class="d-flex justify-content-end gap-2 position-sticky bottom-0 bg-white py-2 border-top">
+                <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save</button>
+            </div>
+        </div>
+    </form>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

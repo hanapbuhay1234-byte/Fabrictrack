@@ -1,0 +1,75 @@
+@model FabriTrack.Models.Sale
+@{
+    ViewData["Title"] = "Receipt";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="receipt-card">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h3 class="mb-0">FabriTrack</h3>
+            <div class="text-muted">Fabric Inventory &amp; Sales</div>
+        </div>
+        <div class="text-end">
+            <div>Receipt #: <strong>@Model.SaleId</strong></div>
+            <div data-sort-value="@Model.SaleDate.ToString("yyyy-MM-ddTHH:mm")">Date: @Model.SaleDate.ToString("MMM d, yyyy h:mm tt")</div>
+            <div>Cashier: @Model.CashierId</div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <strong>Customer:</strong> @(Model.Customer?.FullName ?? "Walk-in")
+    </div>
+
+    <table class="table table-borderless">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Unit</th>
+                <th class="text-end">Price</th>
+                <th class="text-end">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in Model.SaleItems)
+            {
+                <tr>
+                    <td>@line.Fabric?.Name</td>
+                    <td class="text-end">@String.Format("{0:0.##}", line.Quantity)</td>
+                    <td class="text-end">@line.Fabric?.Unit</td>
+                    <td class="text-end">@line.UnitPrice.ToString("C2")</td>
+                    <td class="text-end">@line.Subtotal.ToString("C2")</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <th class="text-end">Total</th>
+                <th class="text-end">@Model.TotalAmount.ToString("C2")</th>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="d-flex justify-content-between mt-4">
+        <div>
+            <small class="text-muted">Thank you for your purchase.</small>
+        </div>
+        <div>
+            <a class="btn btn-outline-secondary me-2" href="@Url.Action("Index", "Sales")">Back to sales</a>
+            <button class="btn btn-primary" onclick="window.print()">Print</button>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        @@media print {
+            .navbar, .sidebar, footer { display:none !important; }
+            .receipt-card { box-shadow:none; border:none; }
+        }
+    </style>
+}

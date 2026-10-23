@@ -1,0 +1,50 @@
+@model IEnumerable<FabriTrack.Models.Customer>
+@{
+    ViewData["Title"] = "Customers";
+}
+
+<div class="page-header">
+    <h2><i class="bi bi-people me-2"></i>Customers</h2>
+    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>Add customer</a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="empty-state text-center py-5">
+        <i class="bi bi-inbox display-6 d-block mb-2"></i>
+        <h5 class="mb-2">No customers yet</h5>
+        <p class="text-muted mb-3">Customers will appear here when you record sales or add them manually.</p>
+        @if (User.Identity?.IsAuthenticated ?? false) {
+            <a asp-action="Create" class="btn btn-primary">Add customer</a>
+        }
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table class="table data-table" data-page-size="10">
+            <thead><tr><th data-sort>Name</th><th data-sort>Contact</th><th data-sort>Email</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var c in Model)
+                {
+                    <tr>
+                        <td>@c.FullName</td>
+                        <td>@c.ContactNumber</td>
+                        <td>@c.Email</td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@c.CustomerId"><i class="bi bi-eye"></i></a>
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <a class="btn btn-sm btn-outline-warning" asp-action="Edit" asp-route-id="@c.CustomerId"><i class="bi bi-pencil"></i></a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                        data-form-action="@Url.Action("Delete", "Customers", new { id = c.CustomerId })" data-item-name="@c.FullName">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

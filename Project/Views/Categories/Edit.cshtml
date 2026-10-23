@@ -1,0 +1,30 @@
+@model FabriTrack.Models.Category
+@{
+    ViewData["Title"] = "Edit Category";
+}
+
+<h2 class="mb-3"><i class="bi bi-pencil-square me-2"></i>Edit category</h2>
+<div class="form-card">
+    <form asp-action="Edit" method="post">
+        <input type="hidden" asp-for="CategoryId" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <input asp-for="Description" class="form-control" />
+            </div>
+        </div>
+        <div class="form-footer">
+            <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save</button>
+        </div>
+    </form>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

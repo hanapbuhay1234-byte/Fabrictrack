@@ -1,0 +1,111 @@
+@model IEnumerable<FabriTrack.Models.Fabric>
+@{
+    ViewData["Title"] = "Inventory";
+}
+
+<div class="page-header">
+    <h2><i class="bi bi-boxes me-2"></i>Fabric inventory</h2>
+    @if (User.IsInRole("Admin"))
+    {
+        <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>Add fabric</a>
+    }
+</div>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-md-4">
+        <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Search by name or color..." />
+        </div>
+    </div>
+    <div class="col-md-3">
+        <select name="categoryId" class="form-select" asp-items="ViewBag.Categories">
+            <option value="">All categories</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-secondary w-100"><i class="bi bi-funnel me-1"></i>Filter</button>
+    </div>
+    @if (!string.IsNullOrWhiteSpace((string)ViewBag.Search) || ViewBag.CategoryId != null)
+    {
+        <div class="col-md-2">
+            <a asp-action="Index" class="btn btn-outline-secondary w-100"><i class="bi bi-x-lg me-1"></i>Clear</a>
+        </div>
+    }
+</form>
+
+@if (!Model.Any())
+{
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-inbox display-6 d-block mb-2"></i>
+        No fabrics match your search.
+    </div>
+}
+else
+{
+    <div class="fabric-grid">
+        @foreach (var f in Model)
+        {
+            var qty = f.StockQuantity;
+            // Fabric.ReorderLevel was removed from the model. Keep the stock bar simple:
+            // show a neutral bar when stock > 0, and an explicit 'out of stock' indicator when <= 0.
+            var pct = 100;
+            var barColor = qty <= 0 ? "low" : "ok";
+
+            <div class="fabric-card @(qty <= 0 ? "low-stock" : "")">
+                <div class="fabric-top">
+                    <div class="d-flex align-items-center gap-2">
+                        <div>
+                            @{
+                                var src = Html.NormalizeImageUrl(f.ImageUrl);
+                            }
+                            @if (!string.IsNullOrWhiteSpace(src))
+                            {
+                                <img src="@src" alt="@f.Name" class="swatch-circle img-fluid" style="width:56px;height:56px;border-radius:12px;object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling && this.nextElementSibling.classList.remove('d-none');" />
+                                <div class="swatch-placeholder d-none" style="width:56px;height:56px;border-radius:12px;background: linear-gradient(90deg, var(--ft-primary), var(--ft-accent));"></div>
+                            }
+                            else
+                            {
+                                <div class="swatch-circle" style="background: linear-gradient(90deg, var(--ft-primary), var(--ft-accent));" aria-hidden="true"></div>
+                            }
+                        </div>
+                        <div>
+                            <div class="fabric-name">@f.Name</div>
+                            <div class="fabric-meta">
+                                <span class="category-chip">@f.Category?.Name</span>
+                                @if (!string.IsNullOrWhiteSpace(f.Color))
+                                {
+                                    <text> · <small class="text-muted">@f.Color</small></text>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="price">₱@f.PricePerUnit.ToString("N2")</div>
+                </div>
+                <div class="fabric-body">
+                    <div class="fabric-meta">Stock: @String.Format("{0:0.##}", f.StockQuantity) @f.Unit</div>
+                    <div class="stock-bar mt-2" aria-hidden="true"><i class="stock-bar-@barColor" style="width:@pct%"></i></div>
+                    @if (qty <= 0)
+                    {
+                        <div class="low-stock-flag"><i class="bi bi-exclamation-triangle-fill me-1"></i>Out of stock</div>
+                    }
+                </div>
+                <div class="fabric-actions">
+                    <a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@f.FabricId" title="View" aria-label="View"><i class="bi bi-eye"></i></a>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#restockModal"
+                                data-fabric-id="@f.FabricId" data-item-name="@f.Name" data-current-stock="@f.StockQuantity @f.Unit" title="Restock" aria-label="Restock">
+                            <i class="bi bi-box-arrow-in-up"></i>
+                        </button>
+                        <a class="btn btn-sm btn-outline-warning" asp-action="Edit" asp-route-id="@f.FabricId" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                data-form-action="@Url.Action("Delete", "Fabrics", new { id = f.FabricId })" data-item-name="@f.Name" title="Delete" aria-label="Delete">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

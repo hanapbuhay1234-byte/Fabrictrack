@@ -1,0 +1,47 @@
+@model IEnumerable<FabriTrack.Models.Supplier>
+@{
+    ViewData["Title"] = "Suppliers";
+}
+
+<div class="page-header">
+    <h2><i class="bi bi-truck me-2"></i>Suppliers</h2>
+    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>Add supplier</a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="empty-state text-center py-5">
+        <i class="bi bi-inbox display-6 d-block mb-2"></i>
+        <h5 class="mb-2">No suppliers yet</h5>
+        <p class="text-muted mb-3">Add your fabric suppliers so you can track sourcing and contacts.</p>
+        @if (User.IsInRole("Admin")) {
+            <a asp-action="Create" class="btn btn-primary">Add supplier</a>
+        }
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table class="table data-table" data-page-size="10">
+            <thead><tr><th data-sort>Name</th><th data-sort>Contact</th><th data-sort>Email</th><th data-sort>Address</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var s in Model)
+                {
+                    <tr>
+                        <td>@s.Name</td>
+                        <td>@s.ContactNumber</td>
+                        <td>@s.Email</td>
+                        <td>@s.Address</td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-warning" asp-action="Edit" asp-route-id="@s.SupplierId"><i class="bi bi-pencil"></i></a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                    data-form-action="@Url.Action("Delete", "Suppliers", new { id = s.SupplierId })" data-item-name="@s.Name">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

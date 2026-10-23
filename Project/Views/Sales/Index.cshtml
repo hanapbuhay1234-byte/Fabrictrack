@@ -1,0 +1,40 @@
+@model IEnumerable<FabriTrack.Models.Sale>
+@{
+    ViewData["Title"] = "Sales History";
+}
+
+<div class="page-header">
+    <h2><i class="bi bi-receipt me-2"></i>Sales history</h2>
+    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-cart-plus me-1"></i>New sale</a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="empty-state text-center py-5">
+        <i class="bi bi-inbox display-6 d-block mb-2"></i>
+        <h5 class="mb-2">No sales recorded yet</h5>
+        <p class="text-muted mb-3">Record your first sale to see transactions here.</p>
+        <a asp-action="Create" class="btn btn-primary">New sale</a>
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table class="table table-hover data-table" data-page-size="10">
+            <thead><tr><th data-sort>#</th><th data-sort>Date</th><th data-sort>Customer</th><th data-sort>Items</th><th data-sort>Total</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td>@s.SaleId</td>
+                    <td data-sort-value="@s.SaleDate.ToString("yyyy-MM-ddTHH:mm")">@s.SaleDate.ToString("MMM d, yyyy h:mm tt")</td>
+                    <td>@(s.Customer?.FullName ?? "Walk-in")</td>
+                    <td><!-- keep count unformatted on index -->@s.SaleItems.Count item(s)</td>
+                    <td>₱@s.TotalAmount.ToString("N2")</td>
+                    <td><a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@s.SaleId"><i class="bi bi-receipt me-1"></i>View receipt</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

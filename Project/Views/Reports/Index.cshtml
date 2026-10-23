@@ -1,0 +1,84 @@
+@model List<FabriTrack.Models.Sale>
+@{
+    ViewData["Title"] = "Receipts Report";
+}
+
+<h1 class="h4 mb-3">Receipts Report</h1>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label small text-uppercase">Filter</label>
+        <select name="filterType" class="form-select">
+            @Html.Raw("<option value=\"day\" " + (ViewBag.FilterType=="day"?"selected":"") + ">Day</option>")
+            @Html.Raw("<option value=\"week\" " + (ViewBag.FilterType=="week"?"selected":"") + ">Week</option>")
+            @Html.Raw("<option value=\"month\" " + (ViewBag.FilterType=="month"?"selected":"") + ">Month</option>")
+            @Html.Raw("<option value=\"range\" " + (ViewBag.FilterType=="range"?"selected":"") + ">Range</option>")
+        </select>
+    </div>
+    <div class="col-auto date-inputs">
+        <label class="form-label small text-uppercase">Date</label>
+        <input type="date" name="date" class="form-control" value="@ViewBag.Date" />
+    </div>
+    <div class="col-auto date-inputs-range">
+        <label class="form-label small text-uppercase">Start</label>
+        <input type="date" name="start" class="form-control" value="@ViewBag.Start" />
+    </div>
+    <div class="col-auto date-inputs-range">
+        <label class="form-label small text-uppercase">End</label>
+        <input type="date" name="end" class="form-control" value="@ViewBag.End" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Apply</button>
+    </div>
+</form>
+
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>Receipt #</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th class="text-end">Total</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var s in Model)
+        {
+            <tr>
+                <td>@s.SaleId</td>
+                <td data-sort-value="@s.SaleDate.ToString("yyyy-MM-ddTHH:mm")">@s.SaleDate.ToString("MMM d, yyyy h:mm tt")</td>
+                <td>@(s.Customer?.FullName ?? "Walk-in")</td>
+                <td>@s.SaleItems.Count</td>
+                <td class="text-end">@s.TotalAmount.ToString("C2")</td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-secondary" target="_blank" href="@Url.Action("Receipt","Sales", new { id = s.SaleId })"><i class="bi bi-printer"></i> Print</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts {
+    <script>
+        // toggle date inputs visibility based on filter
+        (function(){
+            var filter = document.querySelector('select[name="filterType"]');
+            var dateInputs = document.querySelectorAll('.date-inputs');
+            var rangeInputs = document.querySelectorAll('.date-inputs-range');
+            function update(){
+                var v = filter.value;
+                if(v === 'range'){
+                    dateInputs.forEach(e=>e.style.display='none');
+                    rangeInputs.forEach(e=>e.style.display='inline-block');
+                } else {
+                    dateInputs.forEach(e=>e.style.display='inline-block');
+                    rangeInputs.forEach(e=>e.style.display='none');
+                }
+            }
+            filter.addEventListener('change', update);
+            update();
+        })();
+    </script>
+}

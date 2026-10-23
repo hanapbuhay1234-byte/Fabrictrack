@@ -1,0 +1,78 @@
+@model FabriTrack.Models.Fabric
+@{
+    ViewData["Title"] = "Add Fabric";
+}
+
+<h2 class="mb-3"><i class="bi bi-plus-circle me-2"></i>Add fabric</h2>
+
+<div class="form-card">
+    <form asp-action="Create" method="post" enctype="multipart/form-data" class="d-flex flex-column">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+        <div class="form-grid row gx-4 gy-3">
+            <div class="col-md-6">
+                <label class="form-label">Name</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+                <div class="form-help text-muted small">Enter a descriptive fabric name.</div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Category</label>
+                <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.CategoryId"></select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Color</label>
+                <input asp-for="Color" class="form-control" />
+                <div class="form-help text-muted small">Optional (e.g., "Crimson").</div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Supplier</label>
+                <select asp-for="SupplierId" class="form-select" asp-items="ViewBag.SupplierId"></select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Pattern</label>
+                <input asp-for="Pattern" class="form-control" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Unit</label>
+                <select asp-for="Unit" class="form-select">
+                    <option value="yard">Yard</option>
+                    <option value="meter">Meter</option>
+                </select>
+                <div class="form-help text-muted small">Used for stock and pricing.</div>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Price / unit</label>
+                <input asp-for="PricePerUnit" class="form-control" type="number" step="0.01" />
+                <div class="form-help text-muted small">Numeric value, e.g., 120.00</div>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Stock qty</label>
+                <input asp-for="StockQuantity" class="form-control" type="number" step="0.01" />
+                <div class="form-help text-muted small">Current on-hand quantity in selected unit.</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label">Image</label>
+                <input name="ImageFile" type="file" accept="image/*" required class="form-control" />
+                <span asp-validation-for="ImageUrl" class="text-danger"></span>
+                <div class="form-help text-muted small">Upload a representative image (required).</div>
+            </div>
+        </div>
+
+        <div class="form-footer mt-auto pt-3 border-top d-flex justify-content-between">
+            <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save</button>
+        </div>
+    </form>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
