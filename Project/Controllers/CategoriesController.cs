@@ -12,12 +12,27 @@ namespace FabriTrack.Controllers
         private readonly ApplicationDbContext _context;
         public CategoriesController(ApplicationDbContext context) => _context = context;
 
-        public async Task<IActionResult> Index() => View(await _context.Categories.ToListAsync());
+        public async Task<IActionResult> Index() => View(await BuildIndexViewModel());
 
-        public IActionResult Create() => View();
+        private async Task<CategoriesIndexViewModel> BuildIndexViewModel()
+        {
+            var categories = await _context.Categories
+                .OrderBy(category => category.Name)
+                .Select(category => new CategoryListItemViewModel
+                {
+                    CategoryId = category.CategoryId,
+                    Name = category.Name,
+                    Description = category.Description,
+                    ActiveProductCount = category.Fabrics.Count(fabric => fabric.IsActive),
+                    ArchivedProductCount = category.Fabrics.Count(fabric => !fabric.IsActive)
+                })
+                .ToListAsync();
+
+            return new CategoriesIndexViewModel { Categories = categories };
+        }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Category category)
+        public async Task<IActionResult> Create([Bind(Prefix = "CreateCategory")] Category category)
         {
             if (ModelState.IsValid)
             {
@@ -26,20 +41,17 @@ namespace FabriTrack.Controllers
                 TempData["Success"] = $"'{category.Name}' added.";
                 return RedirectToAction(nameof(Index));
             }
-            return View(category);
-        }
 
-        public async Task<IActionResult> Edit(int id)
-        {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null) return NotFound();
-            return View(category);
+            var viewModel = await BuildIndexViewModel();
+            viewModel.CreateCategory = category;
+            viewModel.OpenCreateModal = true;
+            return View(nameof(Index), viewModel);
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Category category)
+        public async Task<IActionResult> Edit([Bind(Prefix = "EditCategory")] Category category)
         {
-            if (id != category.CategoryId) return NotFound();
+            if (category.CategoryId <= 0) return NotFound();
             if (ModelState.IsValid)
             {
                 _context.Update(category);
@@ -47,7 +59,11 @@ namespace FabriTrack.Controllers
                 TempData["Success"] = $"'{category.Name}' updated.";
                 return RedirectToAction(nameof(Index));
             }
-            return View(category);
+
+            var viewModel = await BuildIndexViewModel();
+            viewModel.EditCategory = category;
+            viewModel.OpenEditModal = true;
+            return View(nameof(Index), viewModel);
         }
 
         public async Task<IActionResult> Delete(int id)
@@ -63,6 +79,13 @@ namespace FabriTrack.Controllers
             var category = await _context.Categories.FindAsync(id);
             if (category != null)
             {
+                var productCount = await _context.Fabrics.CountAsync(fabric => fabric.CategoryId == id);
+                if (productCount > 0)
+                {
+                    TempData["Error"] = $"Can't delete '{category.Name}' because it is assigned to {productCount} product{(productCount == 1 ? "" : "s")}. Reassign those products first.";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 try
                 {
                     _context.Categories.Remove(category);
@@ -71,7 +94,7 @@ namespace FabriTrack.Controllers
                 }
                 catch (DbUpdateException)
                 {
-                    TempData["Error"] = $"Can't delete '{category.Name}' — it's still assigned to one or more fabrics.";
+                    TempData["Error"] = $"Can't delete '{category.Name}' because it is still referenced by other records.";
                 }
             }
             return RedirectToAction(nameof(Index));

@@ -56,6 +56,13 @@ This file tracks the features and project changes implemented during the current
 - Retained guarded date filters, including Monday–Sunday weeks and validation for invalid or incomplete custom ranges.
 - Files: `Project\Controllers\ReportsController.cs`, `Project\Models\SalesReportViewModel.cs`, `Project\Views\Reports\Index.cshtml`, `Project\Views\Shared\_Layout.cshtml`, `Project\wwwroot\css\site.css`
 
+### Categories
+
+- Added active and archived product counts to category listings, with links to the matching filtered Product Inventory view.
+- Added category-level overview cards and improved the empty state, descriptions, and add/edit form guidance.
+- Disabled deletion when active or archived products still reference a category, and added a server-side check to prevent linked categories from being deleted.
+- Moved category creation and editing into compact list-screen modals, retaining validation feedback and reopening the relevant modal after invalid submissions.
+
 ### Fabrics — Product Inventory
 
 - Reframed the Fabrics area as Product Inventory, with searchable product cards, SKU and color-variant details, category/supplier/unit/stock filters, and sort options.

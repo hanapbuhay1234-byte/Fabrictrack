@@ -1,45 +1,211 @@
-@model IEnumerable<FabriTrack.Models.Category>
+@model FabriTrack.Models.CategoriesIndexViewModel
 @{
     ViewData["Title"] = "Categories";
+    var categories = Model.Categories;
 }
 
-<div class="page-header">
-    <h2><i class="bi bi-tags me-2"></i>Categories</h2>
-    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>Add category</a>
+<div class="page-header category-page-header">
+    <div>
+        <h2><i class="bi bi-tags me-2"></i>Categories</h2>
+        <p class="text-muted mb-0">Organize products and browse inventory by category.</p>
+    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
+        <i class="bi bi-plus-lg me-1"></i>Add category
+    </button>
 </div>
 
-@if (!Model.Any())
+@if (categories.Count == 0)
 {
     <div class="empty-state text-center py-5">
         <i class="bi bi-inbox display-6 d-block mb-2"></i>
         <h5 class="mb-2">No categories yet</h5>
         <p class="text-muted mb-3">Organize fabrics with categories to make inventory browsing easier.</p>
-        @if (User.IsInRole("Admin")) {
-            <a asp-action="Create" class="btn btn-primary">Add category</a>
-        }
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
+            <i class="bi bi-plus-lg me-1"></i>Add category
+        </button>
     </div>
 }
 else
 {
-    <div class="table-container">
-        <table class="table data-table" data-page-size="10">
-            <thead><tr><th data-sort>Name</th><th data-sort>Description</th><th></th></tr></thead>
+    <section class="category-summary" aria-label="Category summary">
+        <article class="category-summary-card">
+            <span class="category-summary-icon"><i class="bi bi-tags"></i></span>
+            <div><small>Categories</small><strong>@categories.Count</strong></div>
+        </article>
+        <article class="category-summary-card">
+            <span class="category-summary-icon products"><i class="bi bi-box-seam"></i></span>
+            <div><small>Active products</small><strong>@Model.ActiveProductCount</strong></div>
+        </article>
+        <article class="category-summary-card">
+            <span class="category-summary-icon archived"><i class="bi bi-archive"></i></span>
+            <div><small>Archived products</small><strong>@Model.ArchivedProductCount</strong></div>
+        </article>
+    </section>
+
+    <div class="table-container category-table-container">
+        <table class="table data-table category-table" data-page-size="10">
+            <thead>
+                <tr>
+                    <th data-sort>Category</th>
+                    <th data-sort>Description</th>
+                    <th data-sort>Products</th>
+                    <th><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
             <tbody>
-                @foreach (var c in Model)
+                @foreach (var category in categories)
                 {
                     <tr>
-                        <td>@c.Name</td>
-                        <td>@c.Description</td>
-                        <td>
-                            <a class="btn btn-sm btn-outline-warning" asp-action="Edit" asp-route-id="@c.CategoryId"><i class="bi bi-pencil"></i></a>
-                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
-                                    data-form-action="@Url.Action("Delete", "Categories", new { id = c.CategoryId })" data-item-name="@c.Name">
-                                <i class="bi bi-trash3"></i>
+                        <td class="category-name-cell">
+                            <span class="category-name-icon"><i class="bi bi-tag"></i></span>
+                            <strong>@category.Name</strong>
+                        </td>
+                        <td class="category-description-cell">
+                            @(string.IsNullOrWhiteSpace(category.Description) ? "No description" : category.Description)
+                        </td>
+                        <td class="category-product-counts">
+                            @if (category.ActiveProductCount > 0)
+                            {
+                                <a asp-controller="Fabrics" asp-action="Index" asp-route-categoryId="@category.CategoryId"
+                                   class="category-product-count" title="View active products in @category.Name">
+                                    <strong>@category.ActiveProductCount</strong> active
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="category-product-count empty"><strong>0</strong> active</span>
+                            }
+                            @if (category.ArchivedProductCount > 0)
+                            {
+                                <a asp-controller="Fabrics" asp-action="Index" asp-route-categoryId="@category.CategoryId"
+                                   asp-route-includeArchived="true" class="category-archived-count"
+                                   title="View archived products in @category.Name">
+                                    @category.ArchivedProductCount archived
+                                </a>
+                            }
+                        </td>
+                        <td class="category-actions">
+                            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editCategoryModal"
+                                    data-category-id="@category.CategoryId" data-category-name="@category.Name"
+                                    data-category-description="@category.Description" title="Edit @category.Name" aria-label="Edit @category.Name">
+                                <i class="bi bi-pencil"></i>
                             </button>
+                            @if (category.TotalProductCount == 0)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                        data-form-action="@Url.Action("Delete", "Categories", new { id = category.CategoryId })" data-item-name="@category.Name"
+                                        title="Delete @category.Name" aria-label="Delete @category.Name">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                                        title="Reassign all active and archived products before deleting this category"
+                                        aria-label="Cannot delete @category.Name while products are assigned">
+                                    <i class="bi bi-lock"></i>
+                                </button>
+                            }
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
+}
+
+<div class="modal fade category-modal" id="createCategoryModal" tabindex="-1" aria-labelledby="createCategoryModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="createCategoryModalTitle"><i class="bi bi-plus-circle me-2"></i>Add category</h5>
+                        <p class="small text-muted mb-0 mt-1">Create a category to organize inventory products.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body category-modal-fields">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                    <div class="form-group">
+                        <label asp-for="CreateCategory.Name" class="form-label">Category name <span class="text-danger">*</span></label>
+                        <input asp-for="CreateCategory.Name" class="form-control" placeholder="e.g. Cotton" autocomplete="off" />
+                        <span asp-validation-for="CreateCategory.Name" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="CreateCategory.Description" class="form-label">Description <span class="text-muted">(optional)</span></label>
+                        <textarea asp-for="CreateCategory.Description" class="form-control" rows="3" maxlength="250"
+                                  placeholder="Briefly describe this category"></textarea>
+                        <span asp-validation-for="CreateCategory.Description" class="text-danger"></span>
+                        <small class="form-help">Up to 250 characters.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Create category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade category-modal" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="Edit" method="post" id="editCategoryForm">
+                @Html.AntiForgeryToken()
+                <input asp-for="EditCategory.CategoryId" type="hidden" />
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="editCategoryModalTitle"><i class="bi bi-pencil-square me-2"></i>Edit category</h5>
+                        <p class="small text-muted mb-0 mt-1">Update the category name or description.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body category-modal-fields">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                    <div class="form-group">
+                        <label asp-for="EditCategory.Name" class="form-label">Category name <span class="text-danger">*</span></label>
+                        <input asp-for="EditCategory.Name" class="form-control" autocomplete="off" />
+                        <span asp-validation-for="EditCategory.Name" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="EditCategory.Description" class="form-label">Description <span class="text-muted">(optional)</span></label>
+                        <textarea asp-for="EditCategory.Description" class="form-control" rows="3" maxlength="250"
+                                  placeholder="Briefly describe this category"></textarea>
+                        <span asp-validation-for="EditCategory.Description" class="text-danger"></span>
+                        <small class="form-help">Up to 250 characters.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var editModal = document.getElementById("editCategoryModal");
+            if (editModal) {
+                editModal.addEventListener("show.bs.modal", function (event) {
+                    var trigger = event.relatedTarget;
+                    if (!trigger) return;
+                    document.getElementById("EditCategory_CategoryId").value = trigger.getAttribute("data-category-id") || "";
+                    document.getElementById("EditCategory_Name").value = trigger.getAttribute("data-category-name") || "";
+                    document.getElementById("EditCategory_Description").value = trigger.getAttribute("data-category-description") || "";
+                });
+            }
+
+            var modalToOpen = "@(Model.OpenCreateModal ? "createCategoryModal" : Model.OpenEditModal ? "editCategoryModal" : "")";
+            if (modalToOpen) {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById(modalToOpen)).show();
+            }
+        })();
+    </script>
 }
