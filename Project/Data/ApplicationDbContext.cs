@@ -75,6 +75,10 @@ namespace FabriTrack.Data
                 .Property(user => user.IsActive)
                 .HasDefaultValue(true);
 
+            builder.Entity<ApplicationUser>()
+                .Property(user => user.ProfilePhotoFileName)
+                .HasMaxLength(64);
+
             builder.Entity<InventoryMovement>()
                 .HasOne(movement => movement.Fabric)
                 .WithMany(fabric => fabric.InventoryMovements)

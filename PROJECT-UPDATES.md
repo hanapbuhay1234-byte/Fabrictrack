@@ -56,6 +56,16 @@ This file tracks the features and project changes implemented during the current
 - Added server-side quantity validation, duplicate-fabric aggregation, and cart restoration when validation fails.
 - Files: `Project\Controllers\SalesController.cs`, `Project\Views\Sales\Create.cshtml`, `Project\wwwroot\css\site.css`
 
+### User profiles
+
+- Added a self-service profile page available to both administrators and staff for updating name, sign-in email, phone number, and profile photo.
+- Require the current password when changing the sign-in email and keep Identity's normalized email/username values consistent; other profile edits do not require password re-entry.
+- Added private profile-photo uploads with a 5 MB limit, JPG/PNG/WEBP extension validation, random filenames, and authenticated delivery outside the public static-files directory, following the existing inventory upload conventions.
+- Added profile-photo removal and an initials fallback, with profile photo/name and profile/password links in the top-bar account menu.
+- Reused the password-change page for self-service changes and generalized its wording while preserving the mandatory first-login password change.
+- Added migration `20261024121958_AddUserProfilePhoto` for the stored profile-photo filename. Apply migrations before running the updated application.
+- Files: `Project\Controllers\ProfileController.cs`, `Project\Models\ProfileViewModel.cs`, `Project\Views\Profile\Index.cshtml`, `Project\Views\Shared\_LoginPartial.cshtml`
+
 ### Dashboard — owner overview
 
 - Replaced lifetime counts and the single-day sales figure with selectable 7-, 30-, and 90-day sales performance.

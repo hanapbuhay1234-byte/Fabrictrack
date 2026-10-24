@@ -29,10 +29,12 @@ namespace FabriTrack.Areas.Identity.Pages.Account
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
+        public bool IsTemporaryPassword { get; private set; }
+
         public class InputModel
         {
             [Required, DataType(DataType.Password)]
-            [Display(Name = "Temporary password")]
+            [Display(Name = "Current password")]
             public string CurrentPassword { get; set; } = string.Empty;
 
             [Required, StringLength(100, MinimumLength = 10)]
@@ -46,18 +48,21 @@ namespace FabriTrack.Areas.Identity.Pages.Account
             public string ConfirmPassword { get; set; } = string.Empty;
         }
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
+            var user = await _userManager.GetUserAsync(User);
+            IsTemporaryPassword = user?.RequirePasswordChange == true;
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid)
-                return Page();
-
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
                 return Challenge();
+
+            IsTemporaryPassword = user.RequirePasswordChange;
+            if (!ModelState.IsValid)
+                return Page();
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try

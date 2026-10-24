@@ -7,28 +7,50 @@
 @if (SignInManager.IsSignedIn(User))
 {
     <li class="nav-item">
-        <span class="nav-link px-2 d-flex align-items-center" style="color: var(--color-ink); gap:0.5rem;">
-            <i class="bi bi-person-circle me-1"></i>
-            @{
-                // Prefer FullName when available, otherwise fall back to email/user name
-                var user = UserManager.GetUserAsync(User).GetAwaiter().GetResult();
-                var displayName = user?.FullName;
-                if (string.IsNullOrWhiteSpace(displayName)) displayName = user?.Email ?? User.Identity?.Name;
-                var roles = user != null ? UserManager.GetRolesAsync(user).GetAwaiter().GetResult() : new List<string>();
-            }
-            <span>@displayName</span>
-            @if (roles != null && roles.Count > 0)
-            {
-                <span class="badge bg-secondary ms-2">@roles[0]</span>
-            }
-        </span>
-    </li>
-    <li class="nav-item">
-        <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home")">
-            <button type="submit" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-box-arrow-right me-1"></i>Logout
+        @{
+            var user = await UserManager.GetUserAsync(User);
+            var displayName = string.IsNullOrWhiteSpace(user?.FullName) ? user?.Email ?? User.Identity?.Name : user.FullName;
+            var roles = user != null ? await UserManager.GetRolesAsync(user) : new List<string>();
+            var initials = string.Join("", (displayName ?? "U").Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Take(2).Select(part => char.ToUpperInvariant(part[0])));
+        }
+        <div class="dropdown">
+            <button class="btn topbar-profile-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                @if (!string.IsNullOrWhiteSpace(user?.ProfilePhotoFileName))
+                {
+                    <img class="topbar-profile-photo" src="@Url.Action("Photo", "Profile", new { version = user.ProfilePhotoFileName })" alt="" />
+                }
+                else
+                {
+                    <span class="topbar-profile-initials" aria-hidden="true">@initials</span>
+                }
+                <span class="topbar-profile-name">@displayName</span>
+                @if (roles.Count > 0)
+                {
+                    <span class="badge bg-secondary topbar-profile-role">@roles[0]</span>
+                }
             </button>
-        </form>
+            <ul class="dropdown-menu dropdown-menu-end topbar-profile-menu">
+                <li>
+                    <a class="dropdown-item" asp-controller="Profile" asp-action="Index">
+                        <i class="bi bi-person-vcard me-2"></i>My profile
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/ChangePassword">
+                        <i class="bi bi-shield-lock me-2"></i>Change password
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                    <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home")">
+                        <button type="submit" class="dropdown-item">
+                            <i class="bi bi-box-arrow-right me-2"></i>Logout
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
     </li>
 }
 else

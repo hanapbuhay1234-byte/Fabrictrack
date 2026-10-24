@@ -1,0 +1,102 @@
+@model FabriTrack.Models.ProfileViewModel
+@{
+    ViewData["Title"] = "My profile";
+}
+
+<div class="page-header profile-page-header">
+    <div>
+        <h2><i class="bi bi-person-vcard me-2"></i>My profile</h2>
+        <p class="text-muted mb-0">Manage your personal details and the information shown in FabriTrack.</p>
+    </div>
+    <a asp-area="Identity" asp-page="/Account/ChangePassword" class="btn btn-outline-primary">
+        <i class="bi bi-shield-lock me-1"></i>Change password
+    </a>
+</div>
+
+<div class="profile-layout">
+    <section class="profile-card profile-photo-card">
+        <h3>Profile photo</h3>
+        <p>Upload a JPG, PNG, or WEBP image up to 5 MB. It is stored privately and only you can view it.</p>
+        <div class="profile-photo-preview">
+            @if (!string.IsNullOrWhiteSpace(Model.CurrentPhotoUrl))
+            {
+                <img id="profilePhotoPreview" src="@Model.CurrentPhotoUrl" alt="Your current profile photo" />
+            }
+            else
+            {
+                <img id="profilePhotoPreview" alt="Selected profile photo preview" hidden />
+                <span id="profilePhotoFallback" aria-hidden="true"><i class="bi bi-person"></i></span>
+            }
+        </div>
+        <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" class="profile-photo-form">
+            @Html.AntiForgeryToken()
+            <label asp-for="ProfilePhoto" class="form-label">Choose a new photo</label>
+            <input asp-for="ProfilePhoto" class="form-control" accept=".jpg,.jpeg,.png,.webp" />
+            <span asp-validation-for="ProfilePhoto" class="text-danger small"></span>
+            <div class="form-text">Maximum file size: 5 MB.</div>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-upload me-1"></i>Upload photo</button>
+        </form>
+        @if (!string.IsNullOrWhiteSpace(Model.CurrentPhotoUrl))
+        {
+            <form asp-action="RemovePhoto" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger w-100"><i class="bi bi-trash me-1"></i>Remove photo</button>
+            </form>
+        }
+    </section>
+
+    <section class="profile-card profile-details-card">
+        <h3>Personal information</h3>
+        <p>Changes are saved to your own account only.</p>
+        <form asp-action="Update" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+            <div class="profile-form-grid">
+                <div class="mb-3">
+                    <label asp-for="FullName" class="form-label"></label>
+                    <input asp-for="FullName" class="form-control" autocomplete="name" />
+                    <span asp-validation-for="FullName" class="text-danger small"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="PhoneNumber" class="form-label"></label>
+                    <input asp-for="PhoneNumber" class="form-control" autocomplete="tel" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+                </div>
+                <div class="mb-3 profile-email-field">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control" autocomplete="email" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                    <div class="form-text">This is also your sign-in email. Changing it requires your current password.</div>
+                </div>
+                <div class="mb-3 profile-email-field">
+                    <label asp-for="CurrentPassword" class="form-label"></label>
+                    <input asp-for="CurrentPassword" class="form-control" autocomplete="current-password" />
+                    <span asp-validation-for="CurrentPassword" class="text-danger small"></span>
+                    <div class="form-text">Only needed when changing your email address.</div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save profile</button>
+        </form>
+        <div class="profile-security-note">
+            <i class="bi bi-shield-check"></i>
+            <span>Password changes are handled separately so your current password is never changed as part of a profile update.</span>
+            <a asp-area="Identity" asp-page="/Account/ChangePassword">Change password</a>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById("ProfilePhoto")?.addEventListener("change", function () {
+            const preview = document.getElementById("profilePhotoPreview");
+            const fallback = document.getElementById("profilePhotoFallback");
+            const file = this.files && this.files[0];
+            if (!file || !file.type.startsWith("image/")) return;
+
+            preview.src = URL.createObjectURL(file);
+            preview.hidden = false;
+            if (fallback) fallback.hidden = true;
+        });
+    </script>
+}

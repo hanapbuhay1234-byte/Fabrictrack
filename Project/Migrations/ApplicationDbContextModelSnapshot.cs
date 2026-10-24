@@ -43,6 +43,7 @@ namespace Project.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
                         .HasDefaultValue(true);
 
@@ -68,6 +69,10 @@ namespace Project.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ProfilePhotoFileName")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<bool>("RequirePasswordChange")
                         .HasColumnType("tinyint(1)");
