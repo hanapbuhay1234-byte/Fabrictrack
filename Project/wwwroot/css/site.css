@@ -830,6 +830,7 @@ table.data-table thead th[data-sort] {
 
 .alert-danger { background: rgba(181,86,60,0.08); color: #7a2f24; border: 1px solid rgba(181,86,60,0.12); }
 .text-danger.small { color: #8b2f26; }
+.alert.validation-summary-valid { display: none; }
 
 .divider { text-align:center; color: rgba(42,38,34,0.45); font-size: 0.85rem; }
 
@@ -847,6 +848,164 @@ table.data-table thead th[data-sort] {
 }
 
 .table-hover tbody tr td { vertical-align: middle; }
+
+/* ---- Owner sales report ---- */
+.reports-header { align-items: flex-start; }
+.reports-header h2 { margin-bottom: 0.25rem; }
+.reports-filter-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--ft-surface);
+    border: 1px solid var(--ft-border);
+    border-radius: var(--ft-radius);
+}
+.reports-filter-field { min-width: 150px; }
+.reports-filter-field .form-label { margin-bottom: 0.35rem; font-size: 0.8rem; font-weight: 650; }
+.reports-filter-field .form-control,
+.reports-filter-field .form-select { min-height: 40px; border-color: var(--ft-border); }
+.reports-filter-button { min-height: 40px; }
+.reports-period-label { display: flex; align-items: center; color: var(--ft-muted); font-size: 0.88rem; }
+.reports-period-label i { color: var(--ft-primary); }
+.reports-summary-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-height: 98px;
+    padding: 1rem;
+    background: var(--ft-surface);
+    border: 1px solid var(--ft-border);
+    border-radius: var(--ft-radius);
+    box-shadow: 0 8px 20px rgba(12,18,28,0.04);
+}
+.reports-summary-icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 12px;
+    font-size: 1.1rem;
+}
+.reports-summary-icon.revenue { color: var(--ft-success); background: var(--ft-success-100); }
+.reports-summary-icon.orders { color: var(--ft-primary); background: var(--ft-primary-100); }
+.reports-summary-icon.average { color: #7c3aed; background: rgba(124,58,237,0.08); }
+.reports-summary-icon.units { color: #a16207; background: var(--ft-warning-100); }
+.reports-summary-card > div { display: flex; min-width: 0; flex-direction: column; gap: 0.1rem; }
+.reports-summary-label { color: var(--ft-muted); font-size: 0.75rem; font-weight: 600; }
+.reports-summary-card strong { overflow: hidden; color: var(--ft-text); font-size: 1.22rem; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.reports-summary-card strong small { color: var(--ft-muted); font-size: 0.72rem; font-weight: 500; }
+.analytics-comparison { overflow: hidden; font-size: 0.7rem; text-overflow: ellipsis; white-space: nowrap; }
+.analytics-comparison.positive { color: var(--ft-success); }
+.analytics-comparison.negative { color: var(--ft-danger); }
+.analytics-comparison.neutral { color: var(--ft-muted); }
+.reports-panel {
+    overflow: hidden;
+    background: var(--ft-surface);
+    border: 1px solid var(--ft-border);
+    border-radius: var(--ft-radius);
+    box-shadow: 0 8px 20px rgba(12,18,28,0.04);
+}
+.reports-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--ft-border);
+}
+.reports-panel-header h3 { margin: 0 0 0.2rem; color: var(--ft-text); font-size: 1rem; font-weight: 700; }
+.reports-panel-header p { font-size: 0.8rem; }
+.reports-table { min-width: 680px; }
+.reports-table thead th {
+    padding: 0.75rem 1rem;
+    background: rgba(107,114,128,0.04);
+    color: var(--ft-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.reports-table tbody td { padding: 0.75rem 1rem; font-size: 0.84rem; }
+.reports-empty-state {
+    display: flex;
+    min-height: 190px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 1.25rem;
+    color: var(--ft-muted);
+    text-align: center;
+}
+.reports-empty-state > i { margin-bottom: 0.25rem; color: var(--ft-primary-600); font-size: 1.7rem; }
+.reports-empty-state > strong { color: var(--ft-text); font-size: 0.95rem; }
+.reports-empty-state > span { font-size: 0.82rem; }
+.analytics-chart-scroll { overflow-x: auto; padding: 0.9rem 1rem 0.5rem; }
+.analytics-chart {
+    display: flex;
+    align-items: stretch;
+    gap: 0.6rem;
+    min-width: 100%;
+    min-height: 220px;
+}
+.analytics-chart-column {
+    display: grid;
+    grid-template-rows: 1.35rem minmax(120px, 1fr) 1.5rem;
+    flex: 1 0 42px;
+    min-width: 42px;
+    text-align: center;
+}
+.analytics-chart-value {
+    overflow: hidden;
+    color: var(--ft-muted);
+    font-size: 0.63rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.analytics-chart-track {
+    display: flex;
+    align-items: end;
+    height: 100%;
+    overflow: hidden;
+    border-bottom: 1px solid var(--ft-border);
+    border-radius: 5px 5px 0 0;
+    background: repeating-linear-gradient(to bottom, transparent 0, transparent 49px, var(--ft-border) 50px);
+}
+.analytics-chart-bar {
+    width: 100%;
+    min-height: 0;
+    border-radius: 5px 5px 0 0;
+    background: linear-gradient(180deg, var(--ft-primary-600), var(--ft-primary));
+}
+.analytics-chart-label { padding-top: 0.35rem; color: var(--ft-muted); font-size: 0.68rem; white-space: nowrap; }
+.analytics-history-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    background: var(--ft-surface);
+    border: 1px solid var(--ft-border);
+    border-radius: var(--ft-radius);
+}
+.analytics-history-link > div { display: flex; flex-direction: column; gap: 0.15rem; }
+.analytics-history-link strong { color: var(--ft-text); font-size: 0.88rem; }
+.analytics-history-link span { color: var(--ft-muted); font-size: 0.78rem; }
+
+@media (max-width: 575.98px) {
+    .reports-header { gap: 0.65rem; flex-direction: column; }
+    .reports-header > .btn { width: 100%; }
+    .reports-filter-panel { display: grid; grid-template-columns: 1fr; }
+    .reports-filter-field { min-width: 0; }
+    .reports-filter-button { width: 100%; }
+    .reports-panel-header { padding: 0.85rem; }
+    .analytics-history-link { align-items: stretch; flex-direction: column; }
+    .analytics-history-link .btn { width: 100%; }
+    .analytics-chart-column { flex-basis: 48px; }
+}
 
 /* ---- Sales POS catalog and cart ---- */
 .pos-toolbar {

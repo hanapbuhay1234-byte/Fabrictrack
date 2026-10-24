@@ -48,7 +48,7 @@
 
             <div class="nav-section-label">Overview</div>
             <a class="@NavClass("Home")" asp-controller="Home" asp-action="Index"><i class="bi bi-speedometer2"></i> Dashboard</a>
-            <a class="nav-link" asp-controller="Reports" asp-action="Index"><i class="bi bi-receipt"></i> Reports</a>
+            <a class="@NavClass("Reports")" asp-controller="Reports" asp-action="Index"><i class="bi bi-graph-up-arrow"></i> Sales Analytics</a>
 
             <div class="nav-section-label">Inventory</div>
             <a class="@NavClass("Fabrics", "LowStock")" asp-controller="Fabrics" asp-action="Index"><i class="bi bi-boxes"></i> Fabrics</a>

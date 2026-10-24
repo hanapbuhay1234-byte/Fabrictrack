@@ -1,84 +1,248 @@
-@model List<FabriTrack.Models.Sale>
+@model SalesReportViewModel
 @{
-    ViewData["Title"] = "Receipts Report";
+    ViewData["Title"] = "Sales Analytics";
+
+    string ComparisonText(decimal current, decimal previous)
+    {
+        if (previous == 0)
+            return current == 0 ? "No sales in the previous period" : "Sales started this period";
+
+        var change = (current - previous) / previous * 100;
+        return $"{Math.Abs(change):0.#}% {(change >= 0 ? "up" : "down")} vs previous period";
+    }
+
+    string ComparisonClass(decimal current, decimal previous)
+    {
+        if (current == previous) return "analytics-comparison neutral";
+        return current > previous ? "analytics-comparison positive" : "analytics-comparison negative";
+    }
 }
 
-<h1 class="h4 mb-3">Receipts Report</h1>
+<div class="page-header reports-header">
+    <div>
+        <h2><i class="bi bi-graph-up-arrow me-2"></i>Sales Analytics</h2>
+        <p class="text-muted mb-0">Understand sales trends and product performance across reporting periods.</p>
+    </div>
+    @if (Model.HasValidPeriod)
+    {
+        <a asp-action="Export"
+           asp-route-filterType="@Model.FilterType"
+           asp-route-date="@Model.Date.ToString("yyyy-MM-dd")"
+           asp-route-start="@Model.Start?.ToString("yyyy-MM-dd")"
+           asp-route-end="@Model.End?.ToString("yyyy-MM-dd")"
+           class="btn btn-outline-primary">
+            <i class="bi bi-download me-1"></i>Export analytics CSV
+        </a>
+    }
+</div>
 
-<form method="get" class="row g-2 align-items-end mb-3">
-    <div class="col-auto">
-        <label class="form-label small text-uppercase">Filter</label>
-        <select name="filterType" class="form-select">
-            @Html.Raw("<option value=\"day\" " + (ViewBag.FilterType=="day"?"selected":"") + ">Day</option>")
-            @Html.Raw("<option value=\"week\" " + (ViewBag.FilterType=="week"?"selected":"") + ">Week</option>")
-            @Html.Raw("<option value=\"month\" " + (ViewBag.FilterType=="month"?"selected":"") + ">Month</option>")
-            @Html.Raw("<option value=\"range\" " + (ViewBag.FilterType=="range"?"selected":"") + ">Range</option>")
+<form method="get" class="reports-filter-panel mb-4">
+    <div class="reports-filter-field">
+        <label class="form-label" for="filterType">Report period</label>
+        <select id="filterType" name="filterType" class="form-select">
+            <option value="day" selected="@(Model.FilterType == "day")">Day</option>
+            <option value="week" selected="@(Model.FilterType == "week")">Week (Monday–Sunday)</option>
+            <option value="month" selected="@(Model.FilterType == "month")">Month</option>
+            <option value="range" selected="@(Model.FilterType == "range")">Custom range</option>
         </select>
     </div>
-    <div class="col-auto date-inputs">
-        <label class="form-label small text-uppercase">Date</label>
-        <input type="date" name="date" class="form-control" value="@ViewBag.Date" />
+    <div class="reports-filter-field date-inputs">
+        <label class="form-label" for="reportDate">Date</label>
+        <input id="reportDate" type="date" name="date" class="form-control" value="@Model.Date.ToString("yyyy-MM-dd")" />
     </div>
-    <div class="col-auto date-inputs-range">
-        <label class="form-label small text-uppercase">Start</label>
-        <input type="date" name="start" class="form-control" value="@ViewBag.Start" />
+    <div class="reports-filter-field date-inputs-range">
+        <label class="form-label" for="reportStart">Start date</label>
+        <input id="reportStart" type="date" name="start" class="form-control" value="@Model.Start?.ToString("yyyy-MM-dd")" />
     </div>
-    <div class="col-auto date-inputs-range">
-        <label class="form-label small text-uppercase">End</label>
-        <input type="date" name="end" class="form-control" value="@ViewBag.End" />
+    <div class="reports-filter-field date-inputs-range">
+        <label class="form-label" for="reportEnd">End date</label>
+        <input id="reportEnd" type="date" name="end" class="form-control" value="@Model.End?.ToString("yyyy-MM-dd")" />
     </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-outline-primary">Apply</button>
-    </div>
+    <button type="submit" class="btn btn-primary reports-filter-button"><i class="bi bi-funnel me-1"></i>Apply filters</button>
 </form>
 
-<table class="table table-hover">
-    <thead>
-        <tr>
-            <th>Receipt #</th>
-            <th>Date</th>
-            <th>Customer</th>
-            <th>Items</th>
-            <th class="text-end">Total</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach(var s in Model)
+<div asp-validation-summary="All" class="alert alert-warning" role="alert"></div>
+
+@if (Model.HasValidPeriod)
+{
+    <div class="reports-period-label mb-3">
+        <i class="bi bi-calendar3 me-2"></i><strong>@Model.PeriodLabel</strong>
+        <span class="ms-2 text-muted small">Compared with the immediately preceding period of equal length.</span>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-4">
+            <div class="reports-summary-card">
+                <span class="reports-summary-icon revenue"><i class="bi bi-currency-exchange"></i></span>
+                <div>
+                    <span class="reports-summary-label">Sales revenue</span>
+                    <strong>₱@Model.SalesRevenue.ToString("N2")</strong>
+                    <small class="@ComparisonClass(Model.SalesRevenue, Model.PreviousSalesRevenue)">@ComparisonText(Model.SalesRevenue, Model.PreviousSalesRevenue)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <div class="reports-summary-card">
+                <span class="reports-summary-icon orders"><i class="bi bi-receipt"></i></span>
+                <div>
+                    <span class="reports-summary-label">Orders</span>
+                    <strong>@Model.OrderCount</strong>
+                    <small class="@ComparisonClass(Model.OrderCount, Model.PreviousOrderCount)">@ComparisonText(Model.OrderCount, Model.PreviousOrderCount)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <div class="reports-summary-card">
+                <span class="reports-summary-icon average"><i class="bi bi-basket"></i></span>
+                <div>
+                    <span class="reports-summary-label">Average order value</span>
+                    <strong>₱@Model.AverageOrderValue.ToString("N2")</strong>
+                    <small class="@ComparisonClass(Model.AverageOrderValue, Model.PreviousAverageOrderValue)">@ComparisonText(Model.AverageOrderValue, Model.PreviousAverageOrderValue)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="reports-panel mb-4" aria-labelledby="trendHeading">
+        <div class="reports-panel-header">
+            <div>
+                <h3 id="trendHeading">Sales trend</h3>
+                <p class="text-muted mb-0">Revenue by @Model.TrendGranularity within @Model.PeriodLabel.</p>
+            </div>
+        </div>
+        @if (Model.SalesRevenue == 0)
         {
-            <tr>
-                <td>@s.SaleId</td>
-                <td data-sort-value="@s.SaleDate.ToString("yyyy-MM-ddTHH:mm")">@s.SaleDate.ToString("MMM d, yyyy h:mm tt")</td>
-                <td>@(s.Customer?.FullName ?? "Walk-in")</td>
-                <td>@s.SaleItems.Count</td>
-                <td class="text-end">@s.TotalAmount.ToString("C2")</td>
-                <td class="text-end">
-                    <a class="btn btn-sm btn-secondary" target="_blank" href="@Url.Action("Receipt","Sales", new { id = s.SaleId })"><i class="bi bi-printer"></i> Print</a>
-                </td>
-            </tr>
+            <div class="reports-empty-state">
+                <i class="bi bi-bar-chart-line"></i>
+                <strong>No sales in this period</strong>
+                <span>Sales activity will appear here once recorded.</span>
+            </div>
         }
-    </tbody>
-</table>
+        else
+        {
+            <div class="analytics-chart-scroll">
+                <div class="analytics-chart" role="img" aria-label="Sales revenue trend for selected period">
+                    @foreach (var point in Model.Trend)
+                    {
+                        <div class="analytics-chart-column" title="@point.Label: ₱@point.Revenue.ToString("N2") from @point.OrderCount orders">
+                            <span class="analytics-chart-value">@(point.Revenue > 0 ? $"₱{point.Revenue:N0}" : "")</span>
+                            <div class="analytics-chart-track">
+                                <div class="analytics-chart-bar" style="height: @point.BarHeightPercent%"></div>
+                            </div>
+                            <span class="analytics-chart-label">@point.Label</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </section>
+
+    <div class="row g-4">
+        <div class="col-xl-5">
+            <section class="reports-panel h-100" aria-labelledby="categoryBreakdownHeading">
+                <div class="reports-panel-header">
+                    <div>
+                        <h3 id="categoryBreakdownHeading">Sales by category</h3>
+                        <p class="text-muted mb-0">Categories ranked by sales revenue.</p>
+                    </div>
+                </div>
+                @if (Model.CategoryBreakdown.Count == 0)
+                {
+                    <div class="reports-empty-state">
+                        <i class="bi bi-tags"></i>
+                        <strong>No category sales in this period</strong>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table reports-table align-middle mb-0">
+                            <thead><tr><th>Category</th><th class="text-end">Orders</th><th class="text-end">Sales amount</th></tr></thead>
+                            <tbody>
+                                @foreach (var category in Model.CategoryBreakdown)
+                                {
+                                    <tr>
+                                        <td><strong>@category.Name</strong></td>
+                                        <td class="text-end">@category.OrderCount</td>
+                                        <td class="text-end text-nowrap fw-semibold">₱@category.Revenue.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        </div>
+        <div class="col-xl-7">
+            <section class="reports-panel h-100" aria-labelledby="fabricBreakdownHeading">
+                <div class="reports-panel-header">
+                    <div>
+                        <h3 id="fabricBreakdownHeading">Sales by fabric</h3>
+                        <p class="text-muted mb-0">Quantity is grouped by fabric and unit; yards and meters are not combined.</p>
+                    </div>
+                </div>
+                @if (Model.FabricBreakdown.Count == 0)
+                {
+                    <div class="reports-empty-state">
+                        <i class="bi bi-scissors"></i>
+                        <strong>No fabric sales in this period</strong>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table reports-table align-middle mb-0">
+                            <thead><tr><th>Fabric</th><th class="text-end">Quantity sold</th><th class="text-end">Orders</th><th class="text-end">Sales amount</th></tr></thead>
+                            <tbody>
+                                @foreach (var fabric in Model.FabricBreakdown)
+                                {
+                                    <tr>
+                                        <td><strong>@fabric.Name</strong></td>
+                                        <td class="text-end text-nowrap">@fabric.QuantitySold.ToString("0.##") @fabric.Unit</td>
+                                        <td class="text-end">@fabric.OrderCount</td>
+                                        <td class="text-end text-nowrap fw-semibold">₱@fabric.Revenue.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        </div>
+    </div>
+
+    <div class="analytics-history-link mt-4">
+        <div>
+            <strong>Need to inspect an individual transaction?</strong>
+            <span>View receipts and sale details in Sales History.</span>
+        </div>
+        <a asp-controller="Sales" asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-receipt me-1"></i>Open Sales History</a>
+    </div>
+}
 
 @section Scripts {
     <script>
-        // toggle date inputs visibility based on filter
-        (function(){
-            var filter = document.querySelector('select[name="filterType"]');
-            var dateInputs = document.querySelectorAll('.date-inputs');
-            var rangeInputs = document.querySelectorAll('.date-inputs-range');
-            function update(){
-                var v = filter.value;
-                if(v === 'range'){
-                    dateInputs.forEach(e=>e.style.display='none');
-                    rangeInputs.forEach(e=>e.style.display='inline-block');
-                } else {
-                    dateInputs.forEach(e=>e.style.display='inline-block');
-                    rangeInputs.forEach(e=>e.style.display='none');
-                }
+        (() => {
+            const filter = document.getElementById('filterType');
+            const dateField = document.querySelector('.date-inputs');
+            const rangeFields = document.querySelectorAll('.date-inputs-range');
+            const reportDate = document.getElementById('reportDate');
+            const reportStart = document.getElementById('reportStart');
+            const reportEnd = document.getElementById('reportEnd');
+
+            function updateDateFields() {
+                const isRange = filter.value === 'range';
+                dateField.hidden = isRange;
+                rangeFields.forEach(field => field.hidden = !isRange);
+                reportDate.disabled = isRange;
+                reportStart.disabled = !isRange;
+                reportEnd.disabled = !isRange;
+                reportStart.required = isRange;
+                reportEnd.required = isRange;
             }
-            filter.addEventListener('change', update);
-            update();
+
+            filter.addEventListener('change', updateDateFields);
+            updateDateFields();
         })();
     </script>
 }
