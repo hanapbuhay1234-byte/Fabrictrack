@@ -60,6 +60,10 @@ namespace FabriTrack.Data
                 .HasDefaultValue(5m);
 
             builder.Entity<Fabric>()
+                .Property(fabric => fabric.StockQuantity)
+                .IsConcurrencyToken();
+
+            builder.Entity<Fabric>()
                 .Property(fabric => fabric.IsActive)
                 .HasDefaultValue(true);
 

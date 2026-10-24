@@ -407,7 +407,15 @@ namespace FabriTrack.Controllers
                 Notes = notes,
                 UserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
             });
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                TempData["Error"] = $"Stock for '{fabric.Name}' changed during the restock. Refresh the inventory and try again.";
+                return RedirectToAction(nameof(Index));
+            }
             TempData["Success"] = $"Added {quantity} {fabric.Unit} to '{fabric.Name}'. New stock: {fabric.StockQuantity} {fabric.Unit}.";
             return RedirectToAction(nameof(Index));
         }
@@ -458,7 +466,15 @@ namespace FabriTrack.Controllers
                 Notes = notes,
                 UserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
             });
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                TempData["Error"] = $"Stock for '{fabric.Name}' changed during the adjustment. Refresh the product details and try again.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
             TempData["Success"] = $"Stock for '{fabric.Name}' adjusted by {quantityChange:0.##} {fabric.Unit}.";
             return RedirectToAction(nameof(Details), new { id });
         }

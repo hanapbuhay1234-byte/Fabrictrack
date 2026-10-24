@@ -1,75 +1,113 @@
 @model FabriTrack.Models.Sale
 @{
-    ViewData["Title"] = "Receipt";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Receipt #" + Model.SaleId;
+    var autoPrint = ViewBag.AutoPrint as bool? == true;
 }
 
-<div class="receipt-card">
-    <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-            <h3 class="mb-0">FabriTrack</h3>
-            <div class="text-muted">Fabric Inventory &amp; Sales</div>
+<div class="receipt-page">
+    <div class="receipt-card">
+        <header class="receipt-header">
+            <div class="receipt-brand">
+                <span class="receipt-brand-mark"><i class="bi bi-scissors" aria-hidden="true"></i></span>
+                <div>
+                    <h1>FabriTrack</h1>
+                    <div class="text-muted">Fabric inventory &amp; sales</div>
+                </div>
+            </div>
+            <div class="receipt-number">
+                <span>Sales receipt</span>
+                <strong>#@Model.SaleId</strong>
+            </div>
+        </header>
+
+        <div class="receipt-meta">
+            <div>
+                <span class="receipt-meta-label">Date and time</span>
+                <strong data-sort-value="@Model.SaleDate.ToString("yyyy-MM-ddTHH:mm")">@Model.SaleDate.ToString("MMM d, yyyy h:mm tt")</strong>
+            </div>
+            <div>
+                <span class="receipt-meta-label">Customer</span>
+                <strong>@(Model.Customer?.FullName ?? "Walk-in customer")</strong>
+            </div>
         </div>
-        <div class="text-end">
-            <div>Receipt #: <strong>@Model.SaleId</strong></div>
-            <div data-sort-value="@Model.SaleDate.ToString("yyyy-MM-ddTHH:mm")">Date: @Model.SaleDate.ToString("MMM d, yyyy h:mm tt")</div>
-            <div>Cashier: @Model.CashierId</div>
+
+        <div class="table-responsive">
+            <table class="table receipt-items">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th class="text-end">Quantity</th>
+                        <th class="text-end">Unit price</th>
+                        <th class="text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.SaleItems)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@item.ProductName</strong>
+                                <div class="small text-muted">@item.ProductSku@(string.IsNullOrWhiteSpace(item.Color) ? "" : $" · {item.Color}")</div>
+                            </td>
+                            <td class="text-end text-nowrap">@String.Format("{0:0.##}", item.Quantity) @item.Unit</td>
+                            <td class="text-end text-nowrap">₱@item.UnitPrice.ToString("N2")</td>
+                            <td class="text-end text-nowrap">₱@item.Subtotal.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
+
+        <div class="receipt-total">
+            <span>Total</span>
+            <strong>₱@Model.TotalAmount.ToString("N2")</strong>
+        </div>
+
+        <div class="receipt-thank-you">Thank you for your purchase.</div>
     </div>
 
-    <div class="mb-3">
-        <strong>Customer:</strong> @(Model.Customer?.FullName ?? "Walk-in")
+    <div id="receiptPrintStatus" class="receipt-print-status" role="status" aria-live="polite" hidden>
+        <span class="receipt-printer-animation" aria-hidden="true"><i class="bi bi-printer"></i></span>
+        <span id="receiptPrintMessage">Preparing the receipt for printing...</span>
     </div>
 
-    <table class="table table-borderless">
-        <thead>
-            <tr>
-                <th>Product / SKU</th>
-                <th class="text-end">Qty</th>
-                <th class="text-end">Unit</th>
-                <th class="text-end">Price</th>
-                <th class="text-end">Subtotal</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var line in Model.SaleItems)
-            {
-                <tr>
-                    <td><strong>@line.ProductName</strong><div class="small text-muted">@line.ProductSku@(string.IsNullOrWhiteSpace(line.Color) ? "" : $" · {line.Color}")</div></td>
-                    <td class="text-end">@String.Format("{0:0.##}", line.Quantity)</td>
-                    <td class="text-end">@line.Unit</td>
-                    <td class="text-end">@line.UnitPrice.ToString("C2")</td>
-                    <td class="text-end">@line.Subtotal.ToString("C2")</td>
-                </tr>
-            }
-        </tbody>
-        <tfoot>
-            <tr>
-                <td></td>
-                <td></td>
-                <td></td>
-                <th class="text-end">Total</th>
-                <th class="text-end">@Model.TotalAmount.ToString("C2")</th>
-            </tr>
-        </tfoot>
-    </table>
-
-    <div class="d-flex justify-content-between mt-4">
-        <div>
-            <small class="text-muted">Thank you for your purchase.</small>
-        </div>
-        <div>
-            <a class="btn btn-outline-secondary me-2" href="@Url.Action("Index", "Sales")">Back to sales</a>
-            <button class="btn btn-primary" onclick="window.print()">Print</button>
-        </div>
+    <div class="receipt-page-actions">
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Sales history</a>
+        <a asp-action="Create" class="btn btn-outline-primary"><i class="bi bi-cart-plus me-1"></i>New sale</a>
+        <button id="printReceiptButton" type="button" class="btn btn-primary"><i class="bi bi-printer me-1"></i>Print receipt</button>
     </div>
+    <p class="receipt-print-note">Your browser will open its print dialog. Select a printer or choose Save as PDF.</p>
 </div>
 
-@section Styles {
-    <style>
-        @@media print {
-            .navbar, .sidebar, footer { display:none !important; }
-            .receipt-card { box-shadow:none; border:none; }
-        }
-    </style>
+@section Scripts {
+    <script>
+        (() => {
+            const status = document.getElementById('receiptPrintStatus');
+            const message = document.getElementById('receiptPrintMessage');
+            let printQueued = false;
+
+            function preparePrint() {
+                if (printQueued) return;
+                printQueued = true;
+                status.hidden = false;
+                status.classList.remove('is-done');
+                status.classList.add('is-printing');
+                message.textContent = 'Preparing the receipt for printing...';
+                window.setTimeout(() => window.print(), 1100);
+            }
+
+            document.getElementById('printReceiptButton').addEventListener('click', preparePrint);
+            window.addEventListener('afterprint', () => {
+                if (!printQueued) return;
+                status.classList.remove('is-printing');
+                status.classList.add('is-done');
+                message.textContent = 'Print dialog closed. If you did not print the receipt, select Print receipt to try again.';
+                printQueued = false;
+            });
+
+            if (@(autoPrint ? "true" : "false")) {
+                preparePrint();
+            }
+        })();
+    </script>
 }

@@ -29,6 +29,7 @@ namespace FabriTrack.Controllers
                 .Include(s => s.SaleItems).ThenInclude(si => si.Fabric)
                 .FirstOrDefaultAsync(s => s.SaleId == id);
             if (sale == null) return NotFound();
+            ViewBag.AutoPrint = TempData["AutoPrintReceiptId"] is int receiptId && receiptId == id;
             return View(sale);
         }
 
@@ -45,7 +46,7 @@ namespace FabriTrack.Controllers
                 .Include(s => s.SaleItems).ThenInclude(si => si.Fabric)
                 .FirstOrDefaultAsync(s => s.SaleId == id);
             if (sale == null) return NotFound();
-            return View(sale);
+            return View(nameof(Receipt), sale);
         }
 
         public async Task<IActionResult> Create()
@@ -99,12 +100,15 @@ namespace FabriTrack.Controllers
                 }
             }
 
+            if (customerId.HasValue &&
+                !await _context.Customers.AnyAsync(customer => customer.CustomerId == customerId.Value))
+            {
+                ModelState.AddModelError("", "The selected customer is no longer available. Choose a customer again.");
+            }
+
             if (!ModelState.IsValid)
             {
-                ViewBag.InitialCart = System.Text.Json.JsonSerializer.Serialize(
-                    fabricIds.Zip(quantities, (fabricId, quantity) => new { fabricId, quantity }));
-                await PopulateCreateViewDataAsync();
-                return View();
+                return await RedisplayCreateFormAsync(fabricIds, quantities, customerId);
             }
 
             var itemQuantities = Enumerable.Range(0, fabricIds.Count)
@@ -171,13 +175,20 @@ namespace FabriTrack.Controllers
                 await transaction.CommitAsync();
 
                 TempData["Success"] = $"Sale #{sale.SaleId} recorded — total ₱{total:N2}.";
+                TempData["AutoPrintReceiptId"] = sale.SaleId;
                 return RedirectToAction(nameof(Receipt), new { id = sale.SaleId });
             }
             catch (CheckoutValidationException exception)
             {
                 await transaction.RollbackAsync();
-                TempData["Error"] = exception.Message;
-                return RedirectToAction(nameof(Create));
+                ModelState.AddModelError("", exception.Message);
+                return await RedisplayCreateFormAsync(fabricIds, quantities, customerId);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await transaction.RollbackAsync();
+                ModelState.AddModelError("", "Inventory changed while this order was being completed. No sale was recorded. Review the refreshed stock and try again.");
+                return await RedisplayCreateFormAsync(fabricIds, quantities, customerId);
             }
             catch
             {
@@ -186,7 +197,18 @@ namespace FabriTrack.Controllers
             }
         }
 
-        private async Task PopulateCreateViewDataAsync()
+        private async Task<IActionResult> RedisplayCreateFormAsync(
+            List<int> fabricIds,
+            List<decimal> quantities,
+            int? customerId)
+        {
+            ViewBag.InitialCart = System.Text.Json.JsonSerializer.Serialize(
+                fabricIds.Zip(quantities, (fabricId, quantity) => new { fabricId, quantity }));
+            await PopulateCreateViewDataAsync(customerId);
+            return View(nameof(Create));
+        }
+
+        private async Task PopulateCreateViewDataAsync(int? customerId = null)
         {
             ViewBag.Fabrics = await _context.Fabrics
                 .Include(fabric => fabric.Category)
@@ -197,10 +219,12 @@ namespace FabriTrack.Controllers
                 await _context.Categories.OrderBy(category => category.Name).ToListAsync(),
                 "CategoryId",
                 "Name");
+            var customers = await _context.Customers.OrderBy(customer => customer.FullName).ToListAsync();
             ViewBag.Customers = new SelectList(
-                await _context.Customers.OrderBy(customer => customer.FullName).ToListAsync(),
+                customers,
                 "CustomerId",
-                "FullName");
+                "FullName",
+                customerId);
         }
     }
 }

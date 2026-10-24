@@ -16,7 +16,7 @@
     <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
 
     <div class="row g-4 align-items-start">
-        <div class="col-lg-7 col-xl-8">
+        <div class="col-md-7 col-xl-8">
             <div class="pos-toolbar mb-3">
                 <div class="input-group pos-search">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
@@ -110,7 +110,9 @@
                                         data-stock="@fabric.StockQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                         data-unit="@fabric.Unit"
                                         disabled="@isOutOfStock">
-                                    <i class="bi bi-plus-lg me-1"></i>Add to order
+                                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                                    <span class="pos-add-button-label">Add to order</span>
+                                    <span class="pos-add-quantity" hidden></span>
                                 </button>
                             </div>
                         </article>
@@ -124,7 +126,7 @@
             }
         </div>
 
-        <div class="col-lg-5 col-xl-4">
+        <div class="col-md-5 col-xl-4 pos-cart-column">
             <section class="pos-cart-card" aria-labelledby="orderHeading">
                 <div class="pos-cart-header">
                     <div>
@@ -154,7 +156,7 @@
                         <strong id="estimatedTotal">₱0.00</strong>
                     </div>
                     <div class="small text-muted mt-1">Final prices and stock are verified at checkout.</div>
-                    <button id="completeSaleButton" type="submit" class="btn btn-primary btn-lg w-100 mt-3" disabled>
+                    <button id="completeSaleButton" type="button" class="btn btn-primary btn-lg w-100 mt-3" disabled>
                         <i class="bi bi-check-circle me-1"></i>Complete sale
                     </button>
                     <a asp-action="Index" class="btn btn-link w-100 mt-1 text-decoration-none">Cancel</a>
@@ -163,6 +165,52 @@
         </div>
     </div>
 </form>
+
+<div class="modal fade" id="saleReviewModal" tabindex="-1" aria-labelledby="saleReviewTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content sale-review-modal">
+            <div class="modal-header">
+                <div>
+                    <div class="small text-uppercase text-muted fw-semibold">Final order review</div>
+                    <h2 class="modal-title fs-5" id="saleReviewTitle">Review before recording</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="sale-review-customer mb-3">
+                    <span class="text-muted">Customer</span>
+                    <strong id="reviewCustomer">Walk-in customer</strong>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle sale-review-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Quantity</th>
+                                <th class="text-end">Unit price</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reviewLines"></tbody>
+                    </table>
+                </div>
+                <div class="sale-review-total">
+                    <span>Total</span>
+                    <strong id="reviewTotal">₱0.00</strong>
+                </div>
+                <div class="small text-muted mt-3">
+                    This is an order review, not a receipt. Inventory and current prices will be checked again before the sale is recorded.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Back to order</button>
+                <button type="button" id="confirmSaleButton" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Confirm and record sale
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div id="initialCartData" data-cart="@initialCart" hidden></div>
 
@@ -176,8 +224,16 @@
             const totalElement = document.getElementById('estimatedTotal');
             const completeButton = document.getElementById('completeSaleButton');
             const clearButton = document.getElementById('clearCartButton');
+            const saleForm = document.getElementById('saleForm');
+            const reviewModalElement = document.getElementById('saleReviewModal');
+            const reviewModal = new bootstrap.Modal(reviewModalElement);
+            const reviewLines = document.getElementById('reviewLines');
+            const reviewCustomer = document.getElementById('reviewCustomer');
+            const reviewTotal = document.getElementById('reviewTotal');
+            const confirmSaleButton = document.getElementById('confirmSaleButton');
             const currency = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
             const quantityFormatter = new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 });
+            let checkoutConfirmed = false;
 
             function formatQuantity(value) {
                 return quantityFormatter.format(value);
@@ -275,6 +331,52 @@
                 emptyCartMessage.hidden = cart.size > 0;
                 completeButton.disabled = cart.size === 0;
                 clearButton.disabled = cart.size === 0;
+
+                document.querySelectorAll('.pos-add-button').forEach(button => {
+                    const item = cart.get(Number(button.dataset.fabricId));
+                    const label = button.querySelector('.pos-add-button-label');
+                    const quantityBadge = button.querySelector('.pos-add-quantity');
+                    if (!item) {
+                        button.classList.remove('in-cart');
+                        button.disabled = Number(button.dataset.stock) <= 0 ||
+                            ((button.dataset.unit === 'roll' || button.dataset.unit === 'piece') && Number(button.dataset.stock) < 1);
+                        label.textContent = 'Add to order';
+                        quantityBadge.hidden = true;
+                        button.removeAttribute('aria-label');
+                        return;
+                    }
+
+                    button.classList.add('in-cart');
+                    label.textContent = item.quantity >= item.stock ? 'Stock limit reached' : 'Add another';
+                    quantityBadge.textContent = `${formatQuantity(item.quantity)} ${item.unit} in order`;
+                    quantityBadge.hidden = false;
+                    button.disabled = item.quantity >= item.stock;
+                    button.setAttribute('aria-label', `${item.name}, ${formatQuantity(item.quantity)} ${item.unit} in order${item.quantity >= item.stock ? '' : ', add another'}`);
+                });
+            }
+
+            function renderOrderReview() {
+                reviewLines.replaceChildren();
+                let total = 0;
+                for (const item of cart.values()) {
+                    const subtotal = item.price * item.quantity;
+                    total += subtotal;
+                    const row = document.createElement('tr');
+                    const productCell = document.createElement('td');
+                    productCell.append(
+                        createElement('div', 'fw-semibold', item.name),
+                        createElement('div', 'small text-muted', `${item.sku}${item.color ? ` · ${item.color}` : ''}`)
+                    );
+                    const quantityCell = createElement('td', 'text-end text-nowrap', `${formatQuantity(item.quantity)} ${item.unit}`);
+                    const priceCell = createElement('td', 'text-end text-nowrap', currency.format(item.price));
+                    const subtotalCell = createElement('td', 'text-end text-nowrap fw-semibold', currency.format(subtotal));
+                    row.append(productCell, quantityCell, priceCell, subtotalCell);
+                    reviewLines.append(row);
+                }
+
+                const selectedCustomer = document.getElementById('customerId');
+                reviewCustomer.textContent = selectedCustomer.selectedOptions[0]?.textContent.trim() || 'Walk-in customer';
+                reviewTotal.textContent = currency.format(total);
             }
 
             document.querySelectorAll('.pos-add-button').forEach(button => {
@@ -327,6 +429,46 @@
             }
             searchInput.addEventListener('input', filterProducts);
             categoryFilter.addEventListener('change', filterProducts);
+
+            completeButton.addEventListener('click', () => {
+                if (cart.size === 0 || saleForm.dataset.submitting === 'true') return;
+                renderOrderReview();
+                reviewModal.show();
+            });
+
+            saleForm.addEventListener('submit', event => {
+                if (!checkoutConfirmed || saleForm.dataset.submitting === 'true') {
+                    event.preventDefault();
+                    if (!checkoutConfirmed) {
+                        renderOrderReview();
+                        reviewModal.show();
+                    }
+                    return;
+                }
+
+                saleForm.dataset.submitting = 'true';
+                completeButton.disabled = true;
+                completeButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Recording sale...';
+                confirmSaleButton.disabled = true;
+                confirmSaleButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Recording sale...';
+            });
+
+            confirmSaleButton.addEventListener('click', () => {
+                if (cart.size === 0 || saleForm.dataset.submitting === 'true') return;
+                if (!saleForm.reportValidity()) return;
+                checkoutConfirmed = true;
+                saleForm.requestSubmit();
+                if (saleForm.dataset.submitting === 'true') reviewModal.hide();
+            });
+
+            reviewModalElement.addEventListener('hidden.bs.modal', () => {
+                if (saleForm.dataset.submitting === 'true') return;
+                checkoutConfirmed = false;
+                completeButton.disabled = cart.size === 0;
+                completeButton.innerHTML = '<i class="bi bi-check-circle me-1"></i>Complete sale';
+                confirmSaleButton.disabled = false;
+                confirmSaleButton.innerHTML = '<i class="bi bi-check-circle me-1" aria-hidden="true"></i>Confirm and record sale';
+            });
 
             try {
                 const initialCart = JSON.parse(document.getElementById('initialCartData').dataset.cart);

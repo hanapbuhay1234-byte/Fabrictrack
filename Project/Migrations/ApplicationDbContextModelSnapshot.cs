@@ -199,6 +199,7 @@ namespace Project.Migrations
                         .HasColumnType("varchar(32)");
 
                     b.Property<decimal>("StockQuantity")
+                        .IsConcurrencyToken()
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<int>("SupplierId")

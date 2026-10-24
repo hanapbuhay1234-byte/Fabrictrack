@@ -22,6 +22,12 @@ This file tracks the features and project changes implemented during the current
 - Repeated additions of a fabric combine into the existing cart line.
 - Added per-item totals, available-stock context, item count, and estimated order total.
 - Made the layout responsive, with the cart beside the catalog on desktop and below it on narrow screens.
+- Kept the Order Preview column sticky while browsing the product catalog from tablet/desktop widths, offset below the sticky top navigation; the cart returns to normal flow on narrow screens where the layout stacks.
+- Updated catalog cards to show current order quantity and provide clear add-another/stock-limit feedback; restored the selected customer and cart after checkout validation errors, and added a submitting state to prevent accidental double checkout.
+- Added stock concurrency checks so concurrent sales cannot silently oversell inventory; stock conflicts return the cashier to the refreshed order with an explanatory message. Restock and adjustment conflicts also return actionable notifications.
+- Added a receipt-style final order review modal before checkout, with an explicit confirmation step; inventory and current prices are still verified server-side when the confirmed sale is recorded.
+- Kept checkout idle while the cashier backs out of the final review; only explicit confirmation starts the submitting state, and closing the review restores the checkout controls.
+- Standardized completed sales and Sales History receipt links on a polished official receipt screen. Successful checkouts animate a brief print-preparation state before opening the browser print dialog; older receipts remain manual-print only.
 - Preserved optional customer selection and server-side checkout pricing/stock validation.
 - Added server-side quantity validation, duplicate-fabric aggregation, and cart restoration when validation fails.
 - Files: `Project\Controllers\SalesController.cs`, `Project\Views\Sales\Create.cshtml`, `Project\wwwroot\css\site.css`
