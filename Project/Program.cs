@@ -28,6 +28,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options => options.Val
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 

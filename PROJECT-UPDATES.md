@@ -66,6 +66,17 @@ This file tracks the features and project changes implemented during the current
 - Added migration `20261024121958_AddUserProfilePhoto` for the stored profile-photo filename. Apply migrations before running the updated application.
 - Files: `Project\Controllers\ProfileController.cs`, `Project\Models\ProfileViewModel.cs`, `Project\Views\Profile\Index.cshtml`, `Project\Views\Shared\_LoginPartial.cshtml`
 
+### Audit logs
+
+- Added an admin-only, searchable, paged audit history with filters for actor, action, record type, and date range, plus filtered CSV export.
+- Recorded successful changes to products, categories, suppliers, customers, sales, stock movements, and user accounts, including staff actions as well as administrator actions.
+- Captured actor, UTC timestamp, action, record identity, and changed-field summaries; stock events also include quantity change and the entered reason.
+- User audit entries omit passwords, password hashes, security stamps, and other credential values. Audit entries are append-only through the application.
+- Audit entries are saved atomically with the associated data changes, including Identity operations, by the application database context.
+- Audit change detection compares actual before-and-after values, so Identity's full-user updates no longer create false reactivation or duplicate staff-creation entries. Category edits load the existing record so changed fields are captured accurately.
+- Added migration `20261024132605_AddAuditLogs` for the centralized audit log table and indexes. Apply migrations before opening the Audit Logs page.
+- Files: `Project\Models\AuditLog.cs`, `Project\Models\AuditLogViewModel.cs`, `Project\Controllers\AuditLogsController.cs`, `Project\Views\AuditLogs\Index.cshtml`
+
 ### Dashboard — owner overview
 
 - Replaced lifetime counts and the single-day sales figure with selectable 7-, 30-, and 90-day sales performance.

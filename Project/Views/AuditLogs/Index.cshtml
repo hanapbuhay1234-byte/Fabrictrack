@@ -1,0 +1,162 @@
+@model FabriTrack.Models.AuditLogViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Audit logs";
+}
+
+<div class="page-header audit-log-header">
+    <div>
+        <h2><i class="bi bi-journal-text me-2"></i>Audit logs</h2>
+        <p class="text-muted mb-0">Review account and business-data changes made by administrators and staff.</p>
+    </div>
+    <a asp-action="Export"
+       asp-route-search="@Model.Search"
+       asp-route-actor="@Model.Actor"
+       asp-route-action="@Model.Action"
+       asp-route-entityType="@Model.EntityType"
+       asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+       asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+       class="btn btn-outline-primary">
+        <i class="bi bi-download me-1"></i>Export CSV
+    </a>
+</div>
+
+<section class="audit-log-panel">
+    <form asp-action="Index" method="get" class="audit-log-filters">
+        <div class="audit-filter-search">
+            <label for="auditSearch" class="form-label">Search activity</label>
+            <input id="auditSearch" name="search" value="@Model.Search" class="form-control" type="search" placeholder="Actor, action, or record" />
+        </div>
+        <div>
+            <label for="auditActor" class="form-label">User</label>
+            <select id="auditActor" name="actor" class="form-select">
+                <option value="">All users</option>
+                @foreach (var actor in Model.Actors)
+                {
+                    <option value="@actor" selected="@(Model.Actor == actor)">@actor</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="auditAction" class="form-label">Action</label>
+            <select id="auditAction" name="action" class="form-select">
+                <option value="">All actions</option>
+                @foreach (var action in Model.Actions)
+                {
+                    <option value="@action" selected="@(Model.Action == action)">@action</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="auditEntity" class="form-label">Record type</label>
+            <select id="auditEntity" name="entityType" class="form-select">
+                <option value="">All record types</option>
+                @foreach (var entityType in Model.EntityTypes)
+                {
+                    <option value="@entityType" selected="@(Model.EntityType == entityType)">@entityType</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="auditStartDate" class="form-label">From</label>
+            <input id="auditStartDate" name="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")" class="form-control" type="date" />
+        </div>
+        <div>
+            <label for="auditEndDate" class="form-label">To</label>
+            <input id="auditEndDate" name="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")" class="form-control" type="date" />
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+    </form>
+    <div asp-validation-summary="All" class="alert alert-danger audit-log-validation" role="alert"></div>
+
+    <div class="audit-log-summary">
+        <span><strong>@Model.TotalRecords</strong> matching record@(Model.TotalRecords == 1 ? "" : "s")</span>
+        <span>Times shown in UTC</span>
+    </div>
+
+    @if (Model.Entries.Count == 0)
+    {
+        <div class="audit-log-empty">
+            <i class="bi bi-journal"></i>
+            <h3>No audit activity found</h3>
+            <p>Try changing the filters, or check back after users make changes.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-container audit-log-table-container">
+            <table class="table audit-log-table">
+                <thead>
+                    <tr>
+                        <th>Date and time (UTC)</th>
+                        <th>User</th>
+                        <th>Activity</th>
+                        <th>Record</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model.Entries)
+                    {
+                        <tr>
+                            <td class="audit-log-time">@entry.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@entry.ActorName</td>
+                            <td><span class="audit-action-badge">@entry.Action</span></td>
+                            <td>
+                                <span class="audit-record-type">@entry.EntityType</span>
+                                <span class="audit-record-name">@entry.EntityName</span>
+                                @if (!string.IsNullOrWhiteSpace(entry.EntityId))
+                                {
+                                    <small class="audit-record-id">ID: @entry.EntityId</small>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(entry.Details))
+                                {
+                                    using var details = JsonDocument.Parse(entry.Details);
+                                    if (details.RootElement.TryGetProperty("Changed fields", out var changedFields))
+                                    {
+                                        <div class="audit-detail-fields">@string.Join(", ", changedFields.EnumerateArray().Select(field => field.GetString()))</div>
+                                    }
+                                    if (details.RootElement.TryGetProperty("Quantity change", out var quantity))
+                                    {
+                                        <div>Quantity: @quantity</div>
+                                    }
+                                    if (details.RootElement.TryGetProperty("Reason", out var reason))
+                                    {
+                                        <small class="audit-detail-reason">@reason.GetString()</small>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <nav class="audit-log-pagination" aria-label="Audit log pages">
+            <span>Page @Model.Page of @Model.TotalPages</span>
+            <div class="d-flex gap-2">
+                @if (Model.HasPreviousPage)
+                {
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Index"
+                       asp-route-search="@Model.Search" asp-route-actor="@Model.Actor" asp-route-action="@Model.Action"
+                       asp-route-entityType="@Model.EntityType" asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                       asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")" asp-route-page="@(Model.Page - 1)">Previous</a>
+                }
+                @if (Model.HasNextPage)
+                {
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Index"
+                       asp-route-search="@Model.Search" asp-route-actor="@Model.Actor" asp-route-action="@Model.Action"
+                       asp-route-entityType="@Model.EntityType" asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                       asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")" asp-route-page="@(Model.Page + 1)">Next</a>
+                }
+            </div>
+        </nav>
+    }
+</section>

@@ -54,7 +54,11 @@ namespace FabriTrack.Controllers
             if (category.CategoryId <= 0) return NotFound();
             if (ModelState.IsValid)
             {
-                _context.Update(category);
+                var existingCategory = await _context.Categories.FindAsync(category.CategoryId);
+                if (existingCategory == null) return NotFound();
+
+                existingCategory.Name = category.Name;
+                existingCategory.Description = category.Description;
                 await _context.SaveChangesAsync();
                 TempData["Success"] = $"'{category.Name}' updated.";
                 return RedirectToAction(nameof(Index));
