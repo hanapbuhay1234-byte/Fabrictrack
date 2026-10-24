@@ -1,0 +1,35 @@
+@page
+@{
+    Layout = "/Views/Shared/_AuthLayout.cshtml";
+    ViewData["Title"] = "Account temporarily locked";
+}
+
+<div class="auth-card">
+    <div class="d-flex align-items-center mb-4">
+        <div class="brand-badge me-3">
+            <i class="bi bi-scissors"></i>
+        </div>
+        <div>
+            <div class="brand-name">FabriTrack</div>
+            <div class="brand-tag">Fabric Inventory &amp; Sales</div>
+        </div>
+    </div>
+
+    <div class="text-center mb-4">
+        <div class="brand-badge mx-auto mb-3" aria-hidden="true">
+            <i class="bi bi-shield-lock"></i>
+        </div>
+        <h1 class="h3 mb-2">Account temporarily locked</h1>
+        <p class="text-muted mb-0">
+            There have been too many unsuccessful sign-in attempts. Please wait a little while before trying again.
+        </p>
+    </div>
+
+    <div class="d-grid">
+        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-auth-submit btn-lg">
+            <i class="bi bi-arrow-left me-2"></i>Back to sign in
+        </a>
+    </div>
+</div>
+
+<div class="text-center text-white-60 mt-3">&copy; @DateTime.Now.Year FabriTrack</div>

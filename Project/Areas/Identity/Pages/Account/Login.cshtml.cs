@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using FabriTrack.Models;
+using FabriTrack.Services;
 
 namespace FabriTrack.Areas.Identity.Pages.Account
 {
@@ -16,11 +17,16 @@ namespace FabriTrack.Areas.Identity.Pages.Account
     public class LoginModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly LoginActivityRecorder _loginActivityRecorder;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<ApplicationUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(
+            SignInManager<ApplicationUser> signInManager,
+            LoginActivityRecorder loginActivityRecorder,
+            ILogger<LoginModel> logger)
         {
             _signInManager = signInManager;
+            _loginActivityRecorder = loginActivityRecorder;
             _logger = logger;
         }
 
@@ -73,6 +79,7 @@ namespace FabriTrack.Areas.Identity.Pages.Account
                 var user = await _signInManager.UserManager.FindByEmailAsync(Input.Email);
                 if (user != null && !user.IsActive)
                 {
+                    await _loginActivityRecorder.RecordAsync(user, "Disabled account sign-in blocked", Input.Email);
                     ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                     return Page();
                 }
@@ -80,6 +87,7 @@ namespace FabriTrack.Areas.Identity.Pages.Account
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
                 if (result.Succeeded)
                 {
+                    await _loginActivityRecorder.RecordAsync(user, "Successful sign-in", Input.Email);
                     _logger.LogInformation("User logged in.");
                     if (user?.RequirePasswordChange == true)
                         return RedirectToPage("./ChangePassword");
@@ -91,11 +99,13 @@ namespace FabriTrack.Areas.Identity.Pages.Account
                 }
                 if (result.IsLockedOut)
                 {
+                    await _loginActivityRecorder.RecordAsync(user, "Account locked out", Input.Email);
                     _logger.LogWarning("User account locked out.");
                     return RedirectToPage("./Lockout");
                 }
                 else
                 {
+                    await _loginActivityRecorder.RecordAsync(user, "Failed sign-in", Input.Email);
                     ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                     return Page();
                 }

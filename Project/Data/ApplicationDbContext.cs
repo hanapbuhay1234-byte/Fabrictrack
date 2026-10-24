@@ -31,6 +31,7 @@ namespace FabriTrack.Data
         public DbSet<SaleItem> SaleItems { get; set; }
         public DbSet<InventoryMovement> InventoryMovements { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<LoginActivity> LoginActivities { get; set; }
 
         public override async Task<int> SaveChangesAsync(
             bool acceptAllChangesOnSuccess,
@@ -156,6 +157,12 @@ namespace FabriTrack.Data
 
             builder.Entity<AuditLog>()
                 .HasIndex(log => log.ActorUserId);
+
+            builder.Entity<LoginActivity>()
+                .HasIndex(activity => activity.OccurredAt);
+
+            builder.Entity<LoginActivity>()
+                .HasIndex(activity => new { activity.UserId, activity.OccurredAt });
 
             builder.Entity<InventoryMovement>()
                 .HasOne(movement => movement.Fabric)

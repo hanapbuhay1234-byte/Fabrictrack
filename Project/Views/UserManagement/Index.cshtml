@@ -92,7 +92,21 @@
                     @foreach (var staff in Model.Staff)
                     {
                         <tr>
-                            <td class="fw-semibold">@staff.FullName</td>
+                            <td>
+                                <div class="user-staff-identity">
+                                    @if (!string.IsNullOrWhiteSpace(staff.ProfilePhotoFileName))
+                                    {
+                                        <img class="user-staff-avatar" src="@Url.Action("StaffPhoto", "Profile", new { id = staff.Id })" alt="" />
+                                    }
+                                    else
+                                    {
+                                        var initials = string.Join("", staff.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                            .Take(2).Select(part => char.ToUpperInvariant(part[0])));
+                                        <span class="user-staff-avatar user-staff-avatar-initials" aria-hidden="true">@initials</span>
+                                    }
+                                    <span class="fw-semibold">@staff.FullName</span>
+                                </div>
+                            </td>
                             <td><a href="mailto:@staff.Email" class="user-email-link">@staff.Email</a></td>
                             <td>
                                 @if (staff.IsActive)
@@ -135,7 +149,6 @@
                                       data-confirm-action="@(staff.IsActive ? "deactivate" : "reactivate")" data-staff-name="@staff.FullName">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@staff.Id" />
-                                    <input type="hidden" name="isActive" value="@(!staff.IsActive)" />
                                     <input type="hidden" name="search" value="@Model.Search" />
                                     <input type="hidden" name="page" value="@Model.Page" />
                                     <button type="submit" class="btn btn-sm @(staff.IsActive ? "btn-outline-danger" : "btn-outline-success")"

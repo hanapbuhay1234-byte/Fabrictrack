@@ -67,14 +67,14 @@ Open `Project\appsettings.json` and set **your own** MySQL password:
 
 ## 5. Apply application updates to the imported database
 
-The checked-in SQL dump contains the existing schema and migration history. After importing it, back up the database, then apply any newer application migrations. The current application includes migrations for Product Inventory, audited sale voiding, staff account activation and first-login password changes, user profile photos, centralized audit logs, and saved sale-processor names. Applying migrations is required before starting the updated application:
+The checked-in SQL dump contains the existing schema and migration history. After importing it, back up the database, then apply any newer application migrations. The current application includes migrations for Product Inventory, audited sale voiding, staff account activation and first-login password changes, user profile photos, centralized audit logs, saved sale-processor names, and Login Activity. Applying migrations is required before starting the updated application:
 
 ```powershell
 dotnet tool install --global dotnet-ef --version 8.0.0
 dotnet ef database update --project .\Project\Project.csproj
 ```
 
-If `dotnet-ef` is already installed, skip the install command. These updates preserve existing records and do not drop or recreate the imported tables. Staff accounts are now created by an administrator; public self-registration is disabled. Profile photos are stored under `Project\App_Data\ProfilePhotos`, outside the public web folder. Ensure the application service account can write to that folder and include it in your database/file backups if you want to preserve uploaded photos.
+If `dotnet-ef` is already installed, skip the install command. These updates preserve existing records and do not drop or recreate the imported tables. Login Activity keeps the most recent 90 days of recorded events. Staff accounts are now created by an administrator; public self-registration is disabled. Profile photos are stored under `Project\App_Data\ProfilePhotos`, outside the public web folder. Ensure the application service account can write to that folder and include it in your database/file backups if you want to preserve uploaded photos.
 
 Do not run the migration command before importing the provided SQL dump. If you are working with a database that contains valuable data, always take a backup before applying schema changes.
 

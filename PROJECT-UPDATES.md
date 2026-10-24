@@ -49,6 +49,8 @@ This file tracks the features and project changes implemented during the current
 ### User management
 
 - Added an admin-only, searchable, paged staff account management module with create, edit, password reset, deactivate, and reactivate actions; staff accounts are never hard-deleted.
+- Added 36 px staff profile photos beside names in the user table, with initials for accounts without a photo; photo delivery is restricted to administrators and staff accounts.
+- Reactivating a staff account now clears any Identity lockout and failed-attempt count in the same transaction as restoring access; staff accounts are explicitly configured for lockout protection.
 - New staff receive a cryptographically generated one-time temporary password, assigned Staff role only, and are required to change that password before accessing the application.
 - Added an authenticated password-change page and request gate for temporary-password accounts, plus immediate security-stamp validation so deactivated staff sessions are invalidated.
 - Disabled the public registration endpoint and removed account-creation links; the application bootstrap continues to ensure the initial administrator and both roles exist and assigns Staff to existing users without a role.
@@ -66,6 +68,14 @@ This file tracks the features and project changes implemented during the current
 - Preserved optional customer selection and server-side checkout pricing/stock validation.
 - Added server-side quantity validation, duplicate-fabric aggregation, and cart restoration when validation fails.
 - Files: `Project\Controllers\SalesController.cs`, `Project\Views\Sales\Create.cshtml`, `Project\wwwroot\css\site.css`
+
+### Login activity
+
+- Added a separate Login Activity module for successful and failed password or authenticator sign-ins, lockouts, blocked sign-ins for inactive accounts, and explicit sign-outs.
+- Administrators can view and filter events across accounts; staff access is scoped server-side to events associated with their own account. CSV export applies the same role-based scope.
+- Captures event time, account snapshot, remote IP, and a capped user-agent string; passwords and authentication codes are never recorded. Unrecognized account attempts are visible only to administrators.
+- Retains the latest 90 days of activity by pruning older rows when new activity is recorded. Sign-out proceeds even if activity persistence fails, and the failure is logged and reported.
+- Added migration `20261024233000_AddLoginActivity`. Apply it with `dotnet ef database update --project .\Project\Project.csproj` before using Login Activity.
 
 ### User profiles
 

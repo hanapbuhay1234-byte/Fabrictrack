@@ -1,0 +1,118 @@
+@model FabriTrack.Models.LoginActivityViewModel
+@{
+    ViewData["Title"] = User.IsInRole(FabriTrack.Models.Roles.Admin) ? "Login activity" : "My login activity";
+    var isAdmin = User.IsInRole(FabriTrack.Models.Roles.Admin);
+}
+
+<div class="page-header">
+    <div>
+        <h2><i class="bi bi-shield-check me-2"></i>@ViewData["Title"]</h2>
+        <p class="text-muted mb-0">@(isAdmin ? "Review sign-ins and sign-outs for all accounts." : "Review sign-ins and sign-outs for your account.") Activity is retained for 90 days.</p>
+    </div>
+    <a asp-action="Export"
+       asp-route-userId="@Model.UserId"
+       asp-route-eventType="@Model.EventType"
+       asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+       asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+       class="btn btn-outline-primary">
+        <i class="bi bi-download me-1"></i>Export CSV
+    </a>
+</div>
+
+<section class="audit-log-panel">
+    <form asp-action="Index" method="get" class="audit-log-filters">
+        @if (isAdmin)
+        {
+            <div>
+                <label for="loginUser" class="form-label">Account</label>
+                <select id="loginUser" name="userId" class="form-select">
+                    <option value="">All accounts</option>
+                    @foreach (var user in Model.Users)
+                    {
+                        <option value="@user.Value" selected="@(Model.UserId == user.Value)">@user.Text</option>
+                    }
+                </select>
+            </div>
+        }
+        <div>
+            <label for="loginEvent" class="form-label">Event</label>
+            <select id="loginEvent" name="eventType" class="form-select">
+                <option value="">All events</option>
+                @foreach (var eventType in Model.EventTypes)
+                {
+                    <option value="@eventType" selected="@(Model.EventType == eventType)">@eventType</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="loginStartDate" class="form-label">From (UTC)</label>
+            <input id="loginStartDate" name="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")" class="form-control" type="date" />
+        </div>
+        <div>
+            <label for="loginEndDate" class="form-label">To (UTC)</label>
+            <input id="loginEndDate" name="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")" class="form-control" type="date" />
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+    </form>
+    <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+
+    <div class="audit-log-summary">
+        <span><strong>@Model.TotalRecords</strong> matching event@(Model.TotalRecords == 1 ? "" : "s")</span>
+        <span>Times shown in UTC · IP and device details may be incomplete</span>
+    </div>
+
+    @if (Model.Entries.Count == 0)
+    {
+        <div class="audit-log-empty">
+            <i class="bi bi-shield"></i>
+            <h3>No login activity found</h3>
+            <p>Sign-in and sign-out events will appear here.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-container audit-log-table-container">
+            <table class="table audit-log-table">
+                <thead>
+                    <tr>
+                        <th>Date and time (UTC)</th>
+                        @if (isAdmin)
+                        {
+                            <th>Account</th>
+                        }
+                        <th>Event</th>
+                        <th>IP address</th>
+                        <th>Device / browser</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model.Entries)
+                    {
+                        <tr>
+                            <td class="audit-log-time">@entry.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            @if (isAdmin)
+                            {
+                                <td>@(entry.AccountName ?? entry.AccountIdentifier ?? "Unrecognized account")</td>
+                            }
+                            <td><span class="audit-action-badge">@entry.EventType</span></td>
+                            <td>@(entry.IpAddress ?? "Unavailable")</td>
+                            <td class="text-break">@(entry.UserAgent ?? "Unavailable")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-muted">Page @Model.Page of @Model.TotalPages</span>
+            <div class="btn-group">
+                <a asp-action="Index" asp-route-userId="@Model.UserId" asp-route-eventType="@Model.EventType"
+                   asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")" asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+                   asp-route-page="@(Model.Page - 1)" class="btn btn-outline-secondary @(Model.HasPreviousPage ? "" : "disabled")">Previous</a>
+                <a asp-action="Index" asp-route-userId="@Model.UserId" asp-route-eventType="@Model.EventType"
+                   asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")" asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+                   asp-route-page="@(Model.Page + 1)" class="btn btn-outline-secondary @(Model.HasNextPage ? "" : "disabled")">Next</a>
+            </div>
+        </div>
+    }
+</section>

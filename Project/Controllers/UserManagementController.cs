@@ -14,15 +14,18 @@ namespace FabriTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly ILogger<UserManagementController> _logger;
 
         public UserManagementController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            RoleManager<IdentityRole> roleManager)
+            RoleManager<IdentityRole> roleManager,
+            ILogger<UserManagementController> logger)
         {
             _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
+            _logger = logger;
         }
 
         public async Task<IActionResult> Index(string? search, int page = 1)
@@ -64,6 +67,7 @@ namespace FabriTrack.Controllers
                 FullName = input.FullName.Trim(),
                 EmailConfirmed = true,
                 IsActive = true,
+                LockoutEnabled = true,
                 RequirePasswordChange = true
             };
             IdentityResult? identityFailure = null;
@@ -150,29 +154,52 @@ namespace FabriTrack.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> SetActive(
             string id,
-            bool isActive,
             string? search,
             int page = 1)
         {
             var user = await FindStaffAsync(id);
             if (user == null) return NotFound();
-            if (user.IsActive == isActive)
-            {
-                TempData["Error"] = $"'{user.FullName}' is already {(isActive ? "active" : "deactivated")}.";
-                return RedirectToAction(nameof(Index), new { search, page });
-            }
+            var isActive = !user.IsActive;
 
-            user.IsActive = isActive;
-            user.SecurityStamp = Guid.NewGuid().ToString();
-            var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded)
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                SetIdentityErrors(result);
-                return RedirectToAction(nameof(Index), new { search, page });
+                user.IsActive = isActive;
+                user.SecurityStamp = Guid.NewGuid().ToString();
+                user.LockoutEnabled = true;
+                if (isActive)
+                {
+                    user.LockoutEnd = null;
+                    user.AccessFailedCount = 0;
+                }
+
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(
+                        "Could not change activation status for staff user {UserId}: {Errors}",
+                        user.Id,
+                        string.Join("; ", result.Errors.Select(error => error.Description)));
+                    SetIdentityErrors(result);
+                    return RedirectToAction(nameof(Index), new { search, page });
+                }
+
+                await transaction.CommitAsync();
+                _logger.LogInformation(
+                    "Staff account {UserId} was {ActivationStatus} by administrator {AdminUserId}.",
+                    user.Id,
+                    isActive ? "reactivated" : "deactivated",
+                    _userManager.GetUserId(User));
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
             }
 
             TempData["Success"] = isActive
-                ? $"'{user.FullName}' can sign in again."
+                ? $"'{user.FullName}' was reactivated and can sign in again."
                 : $"'{user.FullName}' was deactivated and existing sessions invalidated.";
             return RedirectToAction(nameof(Index), new { search, page });
         }
@@ -257,6 +284,7 @@ namespace FabriTrack.Controllers
                 {
                     Id = user.Id,
                     FullName = user.FullName,
+                    ProfilePhotoFileName = user.ProfilePhotoFileName,
                     Email = user.Email ?? string.Empty,
                     IsActive = user.IsActive,
                     RequirePasswordChange = user.RequirePasswordChange

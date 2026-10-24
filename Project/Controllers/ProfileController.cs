@@ -168,6 +168,23 @@ namespace FabriTrack.Controllers
             return PhysicalFile(path, GetPhotoContentType(user.ProfilePhotoFileName!));
         }
 
+        [HttpGet, Authorize(Roles = Roles.Admin)]
+        public async Task<IActionResult> StaffPhoto(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null ||
+                !await _userManager.IsInRoleAsync(user, Roles.Staff) ||
+                await _userManager.IsInRoleAsync(user, Roles.Admin))
+                return NotFound();
+
+            if (!TryGetPhotoPath(user.ProfilePhotoFileName, out var path) || !System.IO.File.Exists(path))
+                return NotFound();
+
+            Response.Headers["Cache-Control"] = "private, no-store";
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            return PhysicalFile(path, GetPhotoContentType(user.ProfilePhotoFileName!));
+        }
+
         private async Task<string?> SavePhotoAsync(IFormFile photo)
         {
             var extension = Path.GetExtension(photo.FileName).ToLowerInvariant();

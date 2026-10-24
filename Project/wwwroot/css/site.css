@@ -569,6 +569,9 @@ footer.footer { color: var(--ft-muted); border-top: 1px solid var(--ft-border) !
 .user-management-table { min-width: 760px; margin-bottom: 0; }
 .user-management-table thead th { color: var(--ft-muted); font-size: 0.74rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
 .user-management-table tbody td { vertical-align: middle; }
+.user-staff-identity { display: flex; align-items: center; gap: 0.65rem; min-width: 180px; }
+.user-management-table .user-staff-avatar { display: inline-grid; width: 36px; height: 36px; min-width: 36px; min-height: 36px; max-width: 36px; max-height: 36px; flex: 0 0 36px; place-items: center; border-radius: 50%; object-fit: cover; }
+.user-staff-avatar-initials { color: var(--ft-primary); background: var(--ft-primary-100); font-size: 0.78rem; font-weight: 750; }
 .user-email-link { color: var(--ft-primary); text-decoration: none; }
 .user-email-link:hover { text-decoration: underline; }
 .user-management-actions { min-width: 152px; }
