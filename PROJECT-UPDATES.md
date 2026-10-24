@@ -33,6 +33,15 @@ This file tracks the features and project changes implemented during the current
 - Added an admin-only, reason-required audited sale-void action. Voids are retained in history, record who/when/why, restore inventory transactionally with compensating stock movements, and are protected against duplicate concurrent voiding. Voided receipts are clearly marked and cannot be printed as valid sales receipts.
 - Excluded voided transactions from Dashboard, Sales Analytics, and customer purchase history so void reversals do not inflate sales counts, revenue, or product performance.
 - Added migration `20261024082501_AddAuditedSaleVoiding` for the void audit fields. Apply it with `dotnet ef database update --project .\Project\Project.csproj` before using the void feature.
+
+### Customers
+
+- Replaced client-side full-list loading with server-side customer search and paging, matching on name, phone, and email.
+- Added completed purchase counts and lifetime spend to customer rows and aggregate summary cards; voided sales are excluded.
+- Moved customer creation and admin editing into list-page modals, retaining entered values and reopening the relevant modal when validation fails.
+- Added clear, accessible list actions, direct phone/email links, and a cleaner profile view.
+- Added completed purchase count and lifetime spend to customer profiles, with server-paged purchase history and direct receipt links.
+- Preserved the existing access policy: authenticated staff can add customers, while editing and deleting remain admin-only.
 - Preserved optional customer selection and server-side checkout pricing/stock validation.
 - Added server-side quantity validation, duplicate-fabric aggregation, and cart restoration when validation fails.
 - Files: `Project\Controllers\SalesController.cs`, `Project\Views\Sales\Create.cshtml`, `Project\wwwroot\css\site.css`

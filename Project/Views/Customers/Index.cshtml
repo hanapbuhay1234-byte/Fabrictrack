@@ -1,50 +1,293 @@
-@model IEnumerable<FabriTrack.Models.Customer>
+@model FabriTrack.Models.CustomersIndexViewModel
 @{
     ViewData["Title"] = "Customers";
+    var isAdmin = User.IsInRole(FabriTrack.Models.Roles.Admin);
+    var hasCustomers = Model.TotalCustomers > 0;
 }
 
-<div class="page-header">
-    <h2><i class="bi bi-people me-2"></i>Customers</h2>
-    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>Add customer</a>
+<div class="page-header customer-page-header">
+    <div>
+        <h2><i class="bi bi-people me-2"></i>Customers</h2>
+        <p class="text-muted mb-0">Manage customer contacts and review completed purchase history.</p>
+    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCustomerModal">
+        <i class="bi bi-plus-lg me-1"></i>Add customer
+    </button>
 </div>
 
-@if (!Model.Any())
-{
-    <div class="empty-state text-center py-5">
-        <i class="bi bi-inbox display-6 d-block mb-2"></i>
-        <h5 class="mb-2">No customers yet</h5>
-        <p class="text-muted mb-3">Customers will appear here when you record sales or add them manually.</p>
-        @if (User.Identity?.IsAuthenticated ?? false) {
-            <a asp-action="Create" class="btn btn-primary">Add customer</a>
+<section class="customer-summary" aria-label="Customer summary">
+    <article class="customer-summary-card">
+        <span class="customer-summary-icon"><i class="bi bi-people"></i></span>
+        <div><small>Matching customers</small><strong>@Model.TotalCustomers</strong></div>
+    </article>
+    <article class="customer-summary-card">
+        <span class="customer-summary-icon purchases"><i class="bi bi-receipt"></i></span>
+        <div><small>Completed purchases</small><strong>@Model.CompletedPurchases</strong></div>
+    </article>
+    <article class="customer-summary-card">
+        <span class="customer-summary-icon spend"><i class="bi bi-cash-stack"></i></span>
+        <div><small>Completed spend</small><strong>₱@Model.CompletedSpend.ToString("N2")</strong></div>
+    </article>
+</section>
+
+<section class="customer-list-panel">
+    <form asp-action="Index" method="get" class="customer-search-form">
+        <div>
+            <label for="customerSearch" class="form-label">Search customers</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input id="customerSearch" name="search" value="@Model.Search" class="form-control"
+                       type="search" placeholder="Name, phone, or email" />
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Search</button>
+        @if (!string.IsNullOrWhiteSpace(Model.Search))
+        {
+            <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
         }
+    </form>
+
+    @if (!hasCustomers)
+    {
+        <div class="customer-empty-state">
+            <i class="bi bi-people"></i>
+            @if (!string.IsNullOrWhiteSpace(Model.Search))
+            {
+                <h3>No matching customers</h3>
+                <p>Try another name, phone number, or email address.</p>
+            }
+            else
+            {
+                <h3>No customers yet</h3>
+                <p>Customers will appear here when you record sales or add them manually.</p>
+                <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#createCustomerModal">
+                    <i class="bi bi-plus-lg me-1"></i>Add customer
+                </button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-container customer-table-container">
+            <table class="table customer-table">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Contact</th>
+                        <th>Email</th>
+                        <th class="text-end">Purchases</th>
+                        <th class="text-end">Lifetime spend</th>
+                        <th class="text-end"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var customer in Model.Customers)
+                    {
+                        <tr>
+                            <td>
+                                <a class="customer-name-link" asp-action="Details" asp-route-id="@customer.CustomerId">@customer.FullName</a>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(customer.ContactNumber))
+                                {
+                                    <a href="tel:@customer.ContactNumber" class="customer-contact-link">@customer.ContactNumber</a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Not provided</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(customer.Email))
+                                {
+                                    <a href="mailto:@customer.Email" class="customer-contact-link">@customer.Email</a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Not provided</span>
+                                }
+                            </td>
+                            <td class="text-end">@customer.CompletedPurchaseCount</td>
+                            <td class="text-end text-nowrap fw-semibold">₱@customer.LifetimeSpend.ToString("N2")</td>
+                            <td class="text-end text-nowrap customer-actions">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@customer.CustomerId"
+                                   title="View @customer.FullName" aria-label="View @customer.FullName">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                @if (isAdmin)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-warning"
+                                            data-bs-toggle="modal" data-bs-target="#editCustomerModal"
+                                            data-customer-id="@customer.CustomerId"
+                                            data-customer-name="@customer.FullName"
+                                            data-customer-contact="@customer.ContactNumber"
+                                            data-customer-email="@customer.Email"
+                                            data-customer-address="@customer.Address"
+                                            title="Edit @customer.FullName" aria-label="Edit @customer.FullName">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                            data-form-action="@Url.Action("Delete", "Customers", new { id = customer.CustomerId })"
+                                            data-item-name="@customer.FullName"
+                                            title="Delete @customer.FullName" aria-label="Delete @customer.FullName">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <nav class="customer-pagination" aria-label="Customer pages">
+            <span class="text-muted small">Showing @(((Model.Page - 1) * Model.PageSize) + 1)–@Math.Min(Model.Page * Model.PageSize, Model.TotalCustomers) of @Model.TotalCustomers customers</span>
+            <div class="btn-group btn-group-sm">
+                @if (Model.HasPreviousPage)
+                {
+                    <a class="btn btn-outline-secondary" asp-action="Index" asp-route-search="@Model.Search" asp-route-page="@(Model.Page - 1)">
+                        <i class="bi bi-chevron-left"></i><span class="visually-hidden">Previous</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="btn btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-chevron-left"></i><span class="visually-hidden">Previous</span></span>
+                }
+                <span class="btn btn-outline-secondary disabled" aria-disabled="true">Page @Model.Page of @Model.TotalPages</span>
+                @if (Model.HasNextPage)
+                {
+                    <a class="btn btn-outline-secondary" asp-action="Index" asp-route-search="@Model.Search" asp-route-page="@(Model.Page + 1)">
+                        <i class="bi bi-chevron-right"></i><span class="visually-hidden">Next</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="btn btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-chevron-right"></i><span class="visually-hidden">Next</span></span>
+                }
+            </div>
+        </nav>
+    }
+</section>
+
+<div class="modal fade customer-modal" id="createCustomerModal" tabindex="-1" aria-labelledby="createCustomerTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="search" value="@Model.Search" />
+                <input type="hidden" name="page" value="@Model.Page" />
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title fs-5" id="createCustomerTitle"><i class="bi bi-person-plus me-2"></i>Add customer</h2>
+                        <p class="small text-muted mb-0 mt-1">Save contact details for faster checkout.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body customer-modal-fields">
+                    <div asp-validation-summary="All" class="text-danger mb-2"></div>
+                    <div class="form-group">
+                        <label asp-for="CreateCustomer.FullName" class="form-label">Full name <span class="text-danger">*</span></label>
+                        <input asp-for="CreateCustomer.FullName" class="form-control" autocomplete="name" />
+                        <span asp-validation-for="CreateCustomer.FullName" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="CreateCustomer.ContactNumber" class="form-label">Contact number <span class="text-muted">(optional)</span></label>
+                        <input asp-for="CreateCustomer.ContactNumber" class="form-control" type="tel" autocomplete="tel" />
+                        <span asp-validation-for="CreateCustomer.ContactNumber" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="CreateCustomer.Email" class="form-label">Email <span class="text-muted">(optional)</span></label>
+                        <input asp-for="CreateCustomer.Email" class="form-control" type="email" autocomplete="email" />
+                        <span asp-validation-for="CreateCustomer.Email" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="CreateCustomer.Address" class="form-label">Address <span class="text-muted">(optional)</span></label>
+                        <textarea asp-for="CreateCustomer.Address" class="form-control" rows="2" autocomplete="street-address"></textarea>
+                        <span asp-validation-for="CreateCustomer.Address" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if (isAdmin)
+{
+    <div class="modal fade customer-modal" id="editCustomerModal" tabindex="-1" aria-labelledby="editCustomerTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form asp-action="Edit" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="editCustomerRouteId" value="@Model.EditCustomer.CustomerId" />
+                    <input type="hidden" asp-for="EditCustomer.CustomerId" />
+                    <input type="hidden" name="search" value="@Model.Search" />
+                    <input type="hidden" name="page" value="@Model.Page" />
+                    <div class="modal-header">
+                        <div>
+                            <h2 class="modal-title fs-5" id="editCustomerTitle"><i class="bi bi-person-gear me-2"></i>Edit customer</h2>
+                            <p class="small text-muted mb-0 mt-1">Update this customer’s contact information.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body customer-modal-fields">
+                        <div asp-validation-summary="All" class="text-danger mb-2"></div>
+                        <div class="form-group">
+                            <label asp-for="EditCustomer.FullName" class="form-label">Full name <span class="text-danger">*</span></label>
+                            <input asp-for="EditCustomer.FullName" class="form-control" autocomplete="name" />
+                            <span asp-validation-for="EditCustomer.FullName" class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="EditCustomer.ContactNumber" class="form-label">Contact number <span class="text-muted">(optional)</span></label>
+                            <input asp-for="EditCustomer.ContactNumber" class="form-control" type="tel" autocomplete="tel" />
+                            <span asp-validation-for="EditCustomer.ContactNumber" class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="EditCustomer.Email" class="form-label">Email <span class="text-muted">(optional)</span></label>
+                            <input asp-for="EditCustomer.Email" class="form-control" type="email" autocomplete="email" />
+                            <span asp-validation-for="EditCustomer.Email" class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="EditCustomer.Address" class="form-label">Address <span class="text-muted">(optional)</span></label>
+                            <textarea asp-for="EditCustomer.Address" class="form-control" rows="2" autocomplete="street-address"></textarea>
+                            <span asp-validation-for="EditCustomer.Address" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 }
-else
-{
-    <div class="table-container">
-        <table class="table data-table" data-page-size="10">
-            <thead><tr><th data-sort>Name</th><th data-sort>Contact</th><th data-sort>Email</th><th></th></tr></thead>
-            <tbody>
-                @foreach (var c in Model)
-                {
-                    <tr>
-                        <td>@c.FullName</td>
-                        <td>@c.ContactNumber</td>
-                        <td>@c.Email</td>
-                        <td>
-                            <a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@c.CustomerId"><i class="bi bi-eye"></i></a>
-                            @if (User.IsInRole("Admin"))
-                            {
-                                <a class="btn btn-sm btn-outline-warning" asp-action="Edit" asp-route-id="@c.CustomerId"><i class="bi bi-pencil"></i></a>
-                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
-                                        data-form-action="@Url.Action("Delete", "Customers", new { id = c.CustomerId })" data-item-name="@c.FullName">
-                                    <i class="bi bi-trash3"></i>
-                                </button>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const editModal = document.getElementById('editCustomerModal');
+            if (editModal) {
+                editModal.addEventListener('show.bs.modal', event => {
+                    const button = event.relatedTarget;
+                    if (!button) return;
+                    editModal.querySelector('[name="EditCustomer.CustomerId"]').value = button.dataset.customerId || '';
+                    editModal.querySelector('#editCustomerRouteId').value = button.dataset.customerId || '';
+                    editModal.querySelector('[name="EditCustomer.FullName"]').value = button.dataset.customerName || '';
+                    editModal.querySelector('[name="EditCustomer.ContactNumber"]').value = button.dataset.customerContact || '';
+                    editModal.querySelector('[name="EditCustomer.Email"]').value = button.dataset.customerEmail || '';
+                    editModal.querySelector('[name="EditCustomer.Address"]').value = button.dataset.customerAddress || '';
+                });
+            }
+
+            const createModal = document.getElementById('createCustomerModal');
+            if (@(Model.OpenCreateModal ? "true" : "false")) bootstrap.Modal.getOrCreateInstance(createModal).show();
+            if (@(Model.OpenEditModal ? "true" : "false") && editModal) bootstrap.Modal.getOrCreateInstance(editModal).show();
+        })();
+    </script>
 }
