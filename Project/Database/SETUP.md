@@ -65,7 +65,22 @@ Open `Project\appsettings.json` and set **your own** MySQL password:
 
 ---
 
-## 5. Run the system
+## 5. Apply application updates to the imported database
+
+The checked-in SQL dump contains the existing schema and migration history. After importing it, back up the database, then apply any newer application migrations:
+
+```powershell
+dotnet tool install --global dotnet-ef --version 8.0.0
+dotnet ef database update --project .\Project\Project.csproj
+```
+
+If `dotnet-ef` is already installed, skip the install command. The Product Inventory update adds SKU, reorder level, archive status, sale-time item details, and inventory movement history with backfills for existing records. It does not drop or recreate the imported tables.
+
+Do not run the migration command before importing the provided SQL dump. If you are working with a database that contains valuable data, always take a backup before applying schema changes.
+
+---
+
+## 6. Run the system
 
 ```bash
 dotnet restore
@@ -77,11 +92,9 @@ Restore and build work from the repository root because it contains `Project.sln
 
 Or open `Project.slnx` in Visual Studio and press **F5**. Open the URL shown in the console (for example `https://localhost:xxxx`).
 
-> **Do NOT run `dotnet ef database update`** if you already imported the SQL file. The tables already exist, so it will fail with "table already exists." Only use it on an empty database, without importing the file.
-
 ---
 
-## 6. Log in
+## 7. Log in
 
 Use the default account that came with the data:
 

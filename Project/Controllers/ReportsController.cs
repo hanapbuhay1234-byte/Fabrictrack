@@ -79,7 +79,7 @@ namespace FabriTrack.Controllers
                 .Where(item => item.Sale != null &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
-                .GroupBy(item => item.Fabric!.Category!.Name)
+                .GroupBy(item => item.CategoryName)
                 .Select(group => new SalesReportCategoryRow
                 {
                     Name = group.Key,
@@ -93,10 +93,12 @@ namespace FabriTrack.Controllers
                 .Where(item => item.Sale != null &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
-                .GroupBy(item => new { item.FabricId, item.Fabric!.Name, item.Fabric.Unit })
+                .GroupBy(item => new { item.ProductSku, item.ProductName, item.Color, item.Unit })
                 .Select(group => new SalesReportFabricRow
                 {
-                    Name = group.Key.Name,
+                    Sku = group.Key.ProductSku,
+                    Name = group.Key.ProductName,
+                    Color = group.Key.Color,
                     Unit = group.Key.Unit,
                     QuantitySold = group.Sum(item => item.Quantity),
                     Revenue = group.Sum(item => item.Quantity * item.UnitPrice),
@@ -131,7 +133,7 @@ namespace FabriTrack.Controllers
                 .Where(item => item.Sale != null &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
-                .GroupBy(item => item.Fabric!.Category!.Name)
+                .GroupBy(item => item.CategoryName)
                 .Select(group => new SalesReportCategoryRow
                 {
                     Name = group.Key,
@@ -145,10 +147,12 @@ namespace FabriTrack.Controllers
                 .Where(item => item.Sale != null &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
-                .GroupBy(item => new { item.Fabric!.Name, item.Fabric.Unit })
+                .GroupBy(item => new { item.ProductSku, item.ProductName, item.Color, item.Unit })
                 .Select(group => new SalesReportFabricRow
                 {
-                    Name = group.Key.Name,
+                    Sku = group.Key.ProductSku,
+                    Name = group.Key.ProductName,
+                    Color = group.Key.Color,
                     Unit = group.Key.Unit,
                     QuantitySold = group.Sum(item => item.Quantity),
                     Revenue = group.Sum(item => item.Quantity * item.UnitPrice),
@@ -207,11 +211,13 @@ namespace FabriTrack.Controllers
             }
 
             csv.AppendLine();
-            csv.AppendLine("Sales by fabric");
-            csv.AppendLine("Fabric,Quantity sold,Unit,Orders,Sales amount (PHP)");
+            csv.AppendLine("Sales by product");
+            csv.AppendLine("SKU,Product,Color,Quantity sold,Unit,Orders,Sales amount (PHP)");
             foreach (var fabric in fabrics)
             {
-                csv.Append(CsvField(fabric.Name)).Append(',')
+                csv.Append(CsvField(fabric.Sku)).Append(',')
+                    .Append(CsvField(fabric.Name)).Append(',')
+                    .Append(CsvField(fabric.Color)).Append(',')
                     .Append(fabric.QuantitySold.ToString(CultureInfo.InvariantCulture)).Append(',')
                     .Append(CsvField(fabric.Unit)).Append(',')
                     .Append(fabric.OrderCount.ToString(CultureInfo.InvariantCulture)).Append(',')

@@ -30,12 +30,12 @@
     </div>
 
     <table class="table">
-        <thead><tr><th>Fabric</th><th>Qty</th><th>Unit price</th><th>Subtotal</th></tr></thead>
+        <thead><tr><th>Product / SKU</th><th>Qty</th><th>Unit price</th><th>Subtotal</th></tr></thead>
         <tbody>
             @foreach (var item in Model.SaleItems)
             {
                 <tr>
-                    <td>@item.Fabric?.Name</td>
+                    <td><strong>@item.ProductName</strong><div class="small text-muted">@item.ProductSku@(string.IsNullOrWhiteSpace(item.Color) ? "" : $" · {item.Color}")</div></td>
                     <td>@String.Format("{0:0.##}", item.Quantity)</td>
                     <td>₱@item.UnitPrice.ToString("N2")</td>
                     <td>₱@item.Subtotal.ToString("N2")</td>

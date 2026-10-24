@@ -15,6 +15,7 @@ namespace FabriTrack.Data
         public DbSet<Customer> Customers { get; set; }
         public DbSet<Sale> Sales { get; set; }
         public DbSet<SaleItem> SaleItems { get; set; }
+        public DbSet<InventoryMovement> InventoryMovements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -49,6 +50,37 @@ namespace FabriTrack.Data
                 .WithMany(f => f.SaleItems)
                 .HasForeignKey(si => si.FabricId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Fabric>()
+                .HasIndex(f => f.Sku)
+                .IsUnique();
+
+            builder.Entity<Fabric>()
+                .Property(fabric => fabric.ReorderLevel)
+                .HasDefaultValue(5m);
+
+            builder.Entity<Fabric>()
+                .Property(fabric => fabric.IsActive)
+                .HasDefaultValue(true);
+
+            builder.Entity<InventoryMovement>()
+                .HasOne(movement => movement.Fabric)
+                .WithMany(fabric => fabric.InventoryMovements)
+                .HasForeignKey(movement => movement.FabricId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<InventoryMovement>()
+                .HasOne(movement => movement.Sale)
+                .WithMany()
+                .HasForeignKey(movement => movement.SaleId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<InventoryMovement>()
+                .HasIndex(movement => new { movement.FabricId, movement.RecordedAt });
+
+            builder.Entity<InventoryMovement>()
+                .Property(movement => movement.RecordedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
             // Seed a couple of categories so the app isn't empty on first run
             builder.Entity<Category>().HasData(

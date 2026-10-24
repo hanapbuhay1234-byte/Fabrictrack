@@ -131,13 +131,13 @@
         <section class="dashboard-panel h-100" aria-labelledby="topFabricsHeading">
             <div class="dashboard-panel-header">
                 <div>
-                    <h3 id="topFabricsHeading">Top-selling fabrics</h3>
-                    <p class="text-muted mb-0">@periodLabel, ranked by quantity sold</p>
+                    <h3 id="topFabricsHeading">Top-selling products</h3>
+                    <p class="text-muted mb-0">@periodLabel, ranked by sales revenue</p>
                 </div>
             </div>
             @if (Model.TopFabrics.Count == 0)
             {
-                <div class="dashboard-list-empty">No fabric sales in this period yet.</div>
+                <div class="dashboard-list-empty">No product sales in this period yet.</div>
             }
             else
             {
@@ -149,7 +149,7 @@
                             <span class="dashboard-rank">@((index + 1).ToString("00"))</span>
                             <div class="dashboard-top-name">
                                 <strong>@fabric.Name</strong>
-                                <span>@fabric.QuantitySold.ToString("0.##") @fabric.Unit sold</span>
+                                <span>@fabric.Sku@(string.IsNullOrWhiteSpace(fabric.Color) ? "" : $" · {fabric.Color}") · @fabric.QuantitySold.ToString("0.##") @fabric.Unit sold</span>
                             </div>
                             <strong class="dashboard-top-revenue">₱@fabric.Revenue.ToString("N2")</strong>
                         </div>
@@ -166,7 +166,7 @@
             <div class="dashboard-panel-header">
                 <div>
                     <h3 id="stockAlertsHeading">Inventory needing attention</h3>
-                    <p class="text-muted mb-0">Low stock is 5 units or fewer; out means zero units.</p>
+                    <p class="text-muted mb-0">Alerts use each product's reorder level.</p>
                 </div>
                 <a asp-controller="Fabrics" asp-action="Index" class="btn btn-sm btn-outline-secondary">Inventory</a>
             </div>
@@ -174,7 +174,7 @@
             {
                 <div class="dashboard-stock-clear">
                     <i class="bi bi-check-circle"></i>
-                    <div><strong>Stock looks good</strong><span>No fabrics are out of stock or at the low-stock threshold.</span></div>
+                    <div><strong>Stock looks good</strong><span>No active products are out of stock or at their reorder level.</span></div>
                 </div>
             }
             else
@@ -189,7 +189,7 @@
                             </span>
                             <span class="dashboard-stock-name">
                                 <strong>@fabric.Name</strong>
-                                <small>@(fabric.Category?.Name ?? "Uncategorized") · @(isOutOfStock ? "Out of stock" : "Low stock")</small>
+                                <small>@(fabric.Category?.Name ?? "Uncategorized") · @(isOutOfStock ? "Out of stock" : $"At or below reorder level ({fabric.ReorderLevel:0.##} {fabric.Unit})")</small>
                             </span>
                             <strong class="dashboard-stock-quantity">@fabric.StockQuantity.ToString("0.##") @fabric.Unit</strong>
                             <i class="bi bi-chevron-right dashboard-stock-chevron"></i>

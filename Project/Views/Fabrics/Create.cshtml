@@ -1,78 +1,139 @@
 @model FabriTrack.Models.Fabric
 @{
-    ViewData["Title"] = "Add Fabric";
+    ViewData["Title"] = "Add Product";
 }
 
-<h2 class="mb-3"><i class="bi bi-plus-circle me-2"></i>Add fabric</h2>
-
-<div class="form-card">
-    <form asp-action="Create" method="post" enctype="multipart/form-data" class="d-flex flex-column">
-        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
-
-        <div class="form-grid row gx-4 gy-3">
-            <div class="col-md-6">
-                <label class="form-label">Name</label>
-                <input asp-for="Name" class="form-control" />
-                <span asp-validation-for="Name" class="text-danger"></span>
-                <div class="form-help text-muted small">Enter a descriptive fabric name.</div>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Category</label>
-                <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.CategoryId"></select>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Color</label>
-                <input asp-for="Color" class="form-control" />
-                <div class="form-help text-muted small">Optional (e.g., "Crimson").</div>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Supplier</label>
-                <select asp-for="SupplierId" class="form-select" asp-items="ViewBag.SupplierId"></select>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Pattern</label>
-                <input asp-for="Pattern" class="form-control" />
-            </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Unit</label>
-                <select asp-for="Unit" class="form-select">
-                    <option value="yard">Yard</option>
-                    <option value="meter">Meter</option>
-                </select>
-                <div class="form-help text-muted small">Used for stock and pricing.</div>
-            </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Price / unit</label>
-                <input asp-for="PricePerUnit" class="form-control" type="number" step="0.01" />
-                <div class="form-help text-muted small">Numeric value, e.g., 120.00</div>
-            </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Stock qty</label>
-                <input asp-for="StockQuantity" class="form-control" type="number" step="0.01" />
-                <div class="form-help text-muted small">Current on-hand quantity in selected unit.</div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <label class="form-label">Image</label>
-                <input name="ImageFile" type="file" accept="image/*" required class="form-control" />
-                <span asp-validation-for="ImageUrl" class="text-danger"></span>
-                <div class="form-help text-muted small">Upload a representative image (required).</div>
-            </div>
+<div class="inventory-form-heading">
+    <a asp-action="Index" class="inventory-back-link"><i class="bi bi-arrow-left"></i> Product inventory</a>
+    <div class="inventory-form-title">
+        <span class="inventory-form-title-icon"><i class="bi bi-plus-lg"></i></span>
+        <div>
+            <h2>Add a product</h2>
+            <p>Create a product record, set its sale unit and opening stock.</p>
         </div>
-
-        <div class="form-footer mt-auto pt-3 border-top d-flex justify-content-between">
-            <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-x-lg me-1"></i>Cancel</a>
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save</button>
-        </div>
-    </form>
+    </div>
 </div>
+
+<form asp-action="Create" method="post" enctype="multipart/form-data" class="inventory-editor">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <div class="inventory-editor-layout">
+        <div class="inventory-editor-main">
+            <section class="inventory-form-section">
+                <div class="inventory-section-heading">
+                    <span class="inventory-section-icon"><i class="bi bi-tag"></i></span>
+                    <div><h3>Product identity</h3><p>Describe the fabric and its color variant.</p></div>
+                </div>
+                <div class="inventory-field-grid">
+                    <div class="inventory-field">
+                        <label asp-for="Name" class="form-label">Product name <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control" placeholder="e.g. Premium cotton" autocomplete="off" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                    <div class="inventory-field">
+                        <label asp-for="Sku" class="form-label">SKU <span class="text-muted fw-normal">Optional</span></label>
+                        <input id="Sku" name="Sku" value="@Model.Sku" class="form-control" placeholder="Auto-generated if blank" autocomplete="off" />
+                        <span asp-validation-for="Sku" class="text-danger"></span>
+                        <small>Use a unique code for this color and stock variant.</small>
+                    </div>
+                    <div class="inventory-field">
+                        <label asp-for="CategoryId" class="form-label">Category <span class="text-danger">*</span></label>
+                        <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.CategoryId"></select>
+                        <span asp-validation-for="CategoryId" class="text-danger"></span>
+                    </div>
+                    <div class="inventory-field">
+                        <label asp-for="SupplierId" class="form-label">Supplier <span class="text-danger">*</span></label>
+                        <select asp-for="SupplierId" class="form-select" asp-items="ViewBag.SupplierId"></select>
+                        <span asp-validation-for="SupplierId" class="text-danger"></span>
+                    </div>
+                    <div class="inventory-field">
+                        <label asp-for="Color" class="form-label">Color / variant</label>
+                        <input asp-for="Color" class="form-control" placeholder="e.g. Navy blue" />
+                        <small>Track each color as its own product and stock balance.</small>
+                    </div>
+                    <div class="inventory-field">
+                        <label asp-for="Pattern" class="form-label">Pattern</label>
+                        <input asp-for="Pattern" class="form-control" placeholder="e.g. Herringbone" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="inventory-form-section">
+                <div class="inventory-section-heading">
+                    <span class="inventory-section-icon"><i class="bi bi-box-seam"></i></span>
+                    <div><h3>Pricing and stock</h3><p>Set the selling price, starting quantity, and reorder alert.</p></div>
+                </div>
+                <div class="inventory-field-grid inventory-field-grid-three">
+                    <div class="inventory-field">
+                        <label asp-for="Unit" class="form-label">Unit <span class="text-danger">*</span></label>
+                        <select asp-for="Unit" class="form-select" asp-items="ViewBag.Units"></select>
+                        <span asp-validation-for="Unit" class="text-danger"></span>
+                        <small>Rolls and pieces use whole quantities.</small>
+                    </div>
+                    <div class="inventory-field">
+                        <label asp-for="PricePerUnit" class="form-label">Selling price <span class="text-danger">*</span></label>
+                        <div class="input-group"><span class="input-group-text">₱</span><input asp-for="PricePerUnit" class="form-control" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+                        <span asp-validation-for="PricePerUnit" class="text-danger"></span>
+                        <small>Price charged for one selected unit.</small>
+                    </div>
+                    <div class="inventory-field">
+                        <label asp-for="StockQuantity" class="form-label">Opening stock <span class="text-danger">*</span></label>
+                        <input asp-for="StockQuantity" class="form-control" type="number" min="0" step="0.01" placeholder="0" />
+                        <span asp-validation-for="StockQuantity" class="text-danger"></span>
+                        <small>Recorded as the initial inventory balance.</small>
+                    </div>
+                    <div class="inventory-field">
+                        <label asp-for="ReorderLevel" class="form-label">Reorder level</label>
+                        <input asp-for="ReorderLevel" class="form-control" type="number" min="0" step="0.01" placeholder="5" />
+                        <span asp-validation-for="ReorderLevel" class="text-danger"></span>
+                        <small>Show a stock alert at or below this amount.</small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="inventory-form-section">
+                <div class="inventory-section-heading">
+                    <span class="inventory-section-icon"><i class="bi bi-image"></i></span>
+                    <div><h3>Product image</h3><p>Help staff recognize the product in the catalog.</p></div>
+                </div>
+                <div class="inventory-field">
+                    <label for="ImageFile" class="form-label">Upload image <span class="text-muted fw-normal">Optional</span></label>
+                    <input id="ImageFile" name="ImageFile" type="file" accept=".jpg,.jpeg,.png,.webp" class="form-control" />
+                    <span asp-validation-for="ImageUrl" class="text-danger"></span>
+                    <small>JPG, PNG, or WEBP. Maximum 3 MB.</small>
+                </div>
+            </section>
+        </div>
+
+        <aside class="inventory-editor-aside inventory-create-aside">
+            <div class="inventory-aside-card">
+                <i class="bi bi-lightbulb"></i>
+                <h3>Before you save</h3>
+                <ul>
+                    <li>Choose a specific color for each separately stocked variant.</li>
+                    <li>The SKU is generated automatically if you leave it blank.</li>
+                    <li>Your opening stock is saved to the movement history.</li>
+                </ul>
+            </div>
+            <div class="inventory-editor-actions">
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Create product</button>
+            </div>
+        </aside>
+    </div>
+</form>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const unit = document.getElementById('Unit');
+            const quantities = [document.getElementById('StockQuantity'), document.getElementById('ReorderLevel')];
+            function syncSteps() {
+                const step = unit.value === 'roll' || unit.value === 'piece' ? '1' : '0.01';
+                quantities.forEach(input => input.step = step);
+            }
+            unit.addEventListener('change', syncSteps);
+            syncSteps();
+        })();
+    </script>
 }

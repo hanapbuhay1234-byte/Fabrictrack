@@ -56,9 +56,24 @@ This file tracks the features and project changes implemented during the current
 - Retained guarded date filters, including Monday–Sunday weeks and validation for invalid or incomplete custom ranges.
 - Files: `Project\Controllers\ReportsController.cs`, `Project\Models\SalesReportViewModel.cs`, `Project\Views\Reports\Index.cshtml`, `Project\Views\Shared\_Layout.cshtml`, `Project\wwwroot\css\site.css`
 
+### Fabrics — Product Inventory
+
+- Reframed the Fabrics area as Product Inventory, with searchable product cards, SKU and color-variant details, category/supplier/unit/stock filters, and sort options.
+- Added unique SKUs (auto-generated when omitted), color variants as separately stocked products, and Yard, Meter, Roll, and Piece units. Roll and Piece stock, reorder levels, sales, and restocks require whole quantities.
+- Added a configurable reorder level per product. The dashboard, POS, inventory filters, and stock-alert page now use that threshold instead of a fixed quantity.
+- Removed stock editing from the product details form. Added logged restocks with optional notes and manual stock adjustments with a required reason, plus a recent inventory movement history.
+- Replaced permanent deletion with archive/restore so products and sale references remain intact.
+- Added sale-item snapshots for SKU, name, color, category, and unit; sales receipts, dashboard product rankings, and analytics use the sale-time values.
+- Made product images optional consistently and limited accepted uploads to JPG, PNG, and WEBP up to 3 MB.
+- Added a data-preserving migration that backfills SKUs, reorder levels, active status, historical sale-item snapshots, and opening stock balances.
+- Refined the Product Inventory UI with full-width responsive filters, readable product cards, clearer on-hand/reorder hierarchy, and consistent stock-status styling across screen sizes.
+- Added dedicated Active and Archived inventory tabs with item counts, and rebuilt the add/edit forms and product details page into clear, responsive identity, pricing, stock, and activity sections.
+- Updated setup instructions to apply the migration after importing the checked-in SQL database.
+- Files: `Project\Controllers\FabricsController.cs`, `Project\Controllers\SalesController.cs`, `Project\Controllers\HomeController.cs`, `Project\Controllers\ReportsController.cs`, `Project\Models\Fabric.cs`, `Project\Models\Sale.cs`, `Project\Models\DashboardViewModel.cs`, `Project\Models\SalesReportViewModel.cs`, `Project\Data\ApplicationDbContext.cs`, `Project\Data\Migrations\20261024170000_AddProductInventory.cs`, `Project\Migrations\ApplicationDbContextModelSnapshot.cs`, related inventory/sales/dashboard/report views, `Project\Views\Shared\_Layout.cshtml`, `Project\Views\Shared\_RestockModal.cshtml`, `Project\wwwroot\js\site.js`, `Project\Database\SETUP.md`
+
 ### Validation performed
 
 - Sales POS JavaScript syntax check passed.
 - Sales Analytics filter JavaScript syntax check passed.
 - `git diff --check` passed after the changes.
-- .NET builds completed successfully with 0 errors. The latest builds reported 20 warnings elsewhere in the project.
+- .NET build completed successfully with 0 errors during Product Inventory implementation. Prior builds reported existing warnings elsewhere in the project.

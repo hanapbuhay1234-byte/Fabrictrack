@@ -24,7 +24,7 @@
     <table class="table table-borderless">
         <thead>
             <tr>
-                <th>Item</th>
+                <th>Product / SKU</th>
                 <th class="text-end">Qty</th>
                 <th class="text-end">Unit</th>
                 <th class="text-end">Price</th>
@@ -35,9 +35,9 @@
             @foreach (var line in Model.SaleItems)
             {
                 <tr>
-                    <td>@line.Fabric?.Name</td>
+                    <td><strong>@line.ProductName</strong><div class="small text-muted">@line.ProductSku@(string.IsNullOrWhiteSpace(line.Color) ? "" : $" · {line.Color}")</div></td>
                     <td class="text-end">@String.Format("{0:0.##}", line.Quantity)</td>
-                    <td class="text-end">@line.Fabric?.Unit</td>
+                    <td class="text-end">@line.Unit</td>
                     <td class="text-end">@line.UnitPrice.ToString("C2")</td>
                     <td class="text-end">@line.Subtotal.ToString("C2")</td>
                 </tr>

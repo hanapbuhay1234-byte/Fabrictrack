@@ -1,63 +1,151 @@
 @model FabriTrack.Models.Fabric
 @{
-    ViewData["Title"] = "Fabric Details";
+    ViewData["Title"] = "Product Details";
+    var isAdmin = User.IsInRole(FabriTrack.Models.Roles.Admin);
+    var isOut = Model.StockQuantity <= 0;
+    var isLow = !isOut && Model.StockQuantity <= Model.ReorderLevel;
+    var imageUrl = Html.NormalizeImageUrl(Model.ImageUrl);
 }
 
-<h2 class="mb-3"><i class="bi bi-boxes me-2"></i>@Model.Name</h2>
-
-<div class="form-card">
-    <div class="row mb-0">
-        <div class="col-md-4 mb-3">
-            @{
-                var src = Html.NormalizeImageUrl(Model.ImageUrl);
-            }
-            @if (!string.IsNullOrWhiteSpace(src))
+<div class="inventory-detail-heading">
+    <a asp-action="Index" asp-route-includeArchived="@(!Model.IsActive)" class="inventory-back-link"><i class="bi bi-arrow-left"></i> @(Model.IsActive ? "Product inventory" : "Archived products")</a>
+    <div class="inventory-detail-heading-row">
+        <div>
+            <div class="inventory-detail-eyebrow">Product details <span>/</span> @Model.Sku</div>
+            <h2>@Model.Name</h2>
+            <p>@(Model.Category?.Name ?? "Uncategorized")@(string.IsNullOrWhiteSpace(Model.Color) ? "" : $" · {Model.Color}")@(string.IsNullOrWhiteSpace(Model.Pattern) ? "" : $" · {Model.Pattern}")</p>
+        </div>
+        <div class="inventory-detail-actions">
+            @if (isAdmin && Model.IsActive)
             {
-                <img src="@src" alt="@Model.Name" class="img-fluid rounded" onerror="this.style.display='none'; document.getElementById('detail-placeholder').classList.remove('d-none');" />
-                <div id="detail-placeholder" class="d-none">
-                    <div class="d-flex align-items-center justify-content-center bg-light rounded" style="width:100%;height:200px;">
-                        <i class="bi bi-image" style="font-size:3rem;color:rgba(0,0,0,0.35);"></i>
-                    </div>
-                </div>
+                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#restockModal"
+                        data-fabric-id="@Model.FabricId" data-item-name="@Model.Name" data-current-stock="@Model.StockQuantity @Model.Unit" data-unit="@Model.Unit">
+                    <i class="bi bi-box-arrow-in-down me-1"></i>Restock
+                </button>
+                <a asp-action="Edit" asp-route-id="@Model.FabricId" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit product</a>
             }
-            else
+            else if (isAdmin)
             {
-                <div class="d-flex align-items-center justify-content-center bg-light rounded" style="width:100%;height:200px;">
-                    <i class="bi bi-image" style="font-size:3rem;color:rgba(0,0,0,0.35);"></i>
-                </div>
+                <form asp-action="Restore" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.FabricId" />
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-arrow-counterclockwise me-1"></i>Restore product</button>
+                </form>
             }
         </div>
-        <dl class="col-md-8 row mb-0">
-            <dt class="col-sm-3">Category</dt>
-            <dd class="col-sm-9">@Model.Category?.Name</dd>
-            <dt class="col-sm-3">Color</dt>
-            <dd class="col-sm-9">@Model.Color</dd>
-            <dt class="col-sm-3">Pattern</dt>
-            <dd class="col-sm-9">@Model.Pattern</dd>
-            <dt class="col-sm-3">Price</dt>
-            <dd class="col-sm-9">₱@Model.PricePerUnit.ToString("N2") / @Model.Unit</dd>
-            <dt class="col-sm-3">Stock</dt>
-            <dd class="col-sm-9">
-                @String.Format("{0:0.##}", Model.StockQuantity) @Model.Unit
-                @if (Model.StockQuantity <= 0)
-                {
-                    <span class="badge badge-low ms-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Out of stock</span>
-                }
-                else
-                {
-                    <span class="badge badge-ok ms-1"><i class="bi bi-check-circle-fill me-1"></i>In stock</span>
-                }
-            </dd>
-            <dt class="col-sm-3">Supplier</dt>
-            <dd class="col-sm-9">@Model.Supplier?.Name</dd>
-        </dl>
     </div>
 </div>
 
-<div class="mt-3">
-    <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Back to inventory</a>
-    @if (User.IsInRole("Admin"))
-    {
-        <a asp-action="Edit" asp-route-id="@Model.FabricId" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit</a>
-    }
+<div class="inventory-detail-layout">
+    <div class="inventory-detail-main">
+        <section class="inventory-detail-product">
+            <div class="inventory-detail-image-wrap">
+                @if (!string.IsNullOrWhiteSpace(imageUrl))
+                {
+                    <img src="@imageUrl" alt="@Model.Name" class="inventory-detail-image" onerror="this.hidden=true; this.nextElementSibling.hidden=false;" />
+                    <div class="inventory-detail-image inventory-image-empty" hidden><i class="bi bi-image"></i></div>
+                }
+                else
+                {
+                    <div class="inventory-detail-image inventory-image-empty"><i class="bi bi-scissors"></i></div>
+                }
+            </div>
+            <div class="inventory-detail-information">
+                <div class="inventory-detail-status">
+                    @if (!Model.IsActive)
+                    {
+                        <span class="inventory-status archived"><i class="bi bi-archive"></i> Archived</span>
+                    }
+                    else if (isOut)
+                    {
+                        <span class="inventory-status out"><i class="bi bi-exclamation-circle-fill"></i> Out of stock</span>
+                    }
+                    else if (isLow)
+                    {
+                        <span class="inventory-status low"><i class="bi bi-exclamation-triangle-fill"></i> Reorder soon</span>
+                    }
+                    else
+                    {
+                        <span class="inventory-status healthy"><i class="bi bi-check-circle-fill"></i> In stock</span>
+                    }
+                </div>
+                <dl class="inventory-detail-list">
+                    <div><dt>SKU</dt><dd>@Model.Sku</dd></div>
+                    <div><dt>Category</dt><dd>@(Model.Category?.Name ?? "Uncategorized")</dd></div>
+                    <div><dt>Color / variant</dt><dd>@(Model.Color ?? "—")</dd></div>
+                    <div><dt>Pattern</dt><dd>@(Model.Pattern ?? "—")</dd></div>
+                    <div><dt>Supplier</dt><dd>@(Model.Supplier?.Name ?? "—")</dd></div>
+                    <div><dt>Selling price</dt><dd>₱@Model.PricePerUnit.ToString("N2") <span>per @Model.Unit</span></dd></div>
+                </dl>
+            </div>
+        </section>
+
+        <section class="inventory-history-card">
+            <div class="inventory-history-heading">
+                <div><h3>Inventory activity</h3><p>Recent changes to this product's stock balance.</p></div>
+                <span class="inventory-history-count">Latest 20</span>
+            </div>
+            @if (Model.InventoryMovements.Count == 0)
+            {
+                <div class="inventory-history-empty"><i class="bi bi-clock-history"></i><strong>No activity recorded yet</strong><span>Stock changes will appear here as they happen.</span></div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table inventory-history-table align-middle mb-0">
+                        <thead><tr><th>Activity</th><th>Date</th><th>Notes</th><th class="text-end">Change</th></tr></thead>
+                        <tbody>
+                            @foreach (var movement in Model.InventoryMovements)
+                            {
+                                <tr>
+                                    <td><span class="inventory-movement-type"><i class="bi @(movement.QuantityChange < 0 ? "bi-arrow-down-left" : "bi-arrow-up-right")"></i>@movement.MovementType</span></td>
+                                    <td class="text-nowrap">@movement.RecordedAt.ToString("MMM d, yyyy · h:mm tt")</td>
+                                    <td>@(movement.Notes ?? "—")</td>
+                                    <td class="text-end fw-semibold @(movement.QuantityChange < 0 ? "text-danger" : "text-success")">
+                                        @(movement.QuantityChange > 0 ? "+" : "")@movement.QuantityChange.ToString("0.##") @Model.Unit
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    </div>
+
+    <aside class="inventory-detail-sidebar">
+        <section class="inventory-stock-panel">
+            <div class="inventory-stock-panel-heading"><i class="bi bi-box-seam"></i><span>Stock overview</span></div>
+            <div class="inventory-stock-primary">
+                <small>Available now</small>
+                <strong>@Model.StockQuantity.ToString("0.##") <span>@Model.Unit</span></strong>
+            </div>
+            <div class="inventory-stock-threshold">
+                <span>Reorder point</span><strong>@Model.ReorderLevel.ToString("0.##") @Model.Unit</strong>
+            </div>
+            @if (isAdmin && Model.IsActive)
+            {
+                <div class="inventory-stock-divider"></div>
+                <h3>Adjust stock</h3>
+                <p>Record a correction to the current stock balance.</p>
+                <form asp-action="AdjustStock" method="post" class="inventory-adjust-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.FabricId" />
+                    <div class="inventory-field">
+                        <label for="quantityChange" class="form-label">Quantity change</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-plus-slash-minus"></i></span>
+                            <input id="quantityChange" name="quantityChange" type="number" step="@(FabriTrack.Models.ProductUnits.IsDiscrete(Model.Unit) ? "1" : "0.01")" class="form-control" placeholder="e.g. -2 or 5" required />
+                        </div>
+                        <small>Use a minus sign to subtract stock.</small>
+                    </div>
+                    <div class="inventory-field">
+                        <label for="reason" class="form-label">Reason</label>
+                        <input id="reason" name="reason" maxlength="250" class="form-control" placeholder="e.g. Stock count correction" required />
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-check-lg me-1"></i>Record adjustment</button>
+                </form>
+            }
+        </section>
+    </aside>
 </div>

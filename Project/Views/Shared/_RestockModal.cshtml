@@ -12,6 +12,8 @@
                     <label class="form-label">Current stock: <strong id="restockModalCurrentStock">—</strong></label>
                     <label class="form-label mt-2" for="restockModalQuantity">Quantity to add</label>
                     <input type="number" step="0.01" min="0.01" name="quantity" id="restockModalQuantity" class="form-control" placeholder="e.g. 50" required />
+                    <label class="form-label mt-3" for="restockModalReason">Note (optional)</label>
+                    <input type="text" maxlength="250" name="reason" id="restockModalReason" class="form-control" placeholder="e.g. Supplier delivery" />
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

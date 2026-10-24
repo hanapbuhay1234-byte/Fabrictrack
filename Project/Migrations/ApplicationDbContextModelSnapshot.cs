@@ -168,6 +168,11 @@ namespace Project.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("ImageUrl")
                         .HasColumnType("longtext");
 
@@ -183,6 +188,16 @@ namespace Project.Migrations
                     b.Property<decimal>("PricePerUnit")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<decimal>("ReorderLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(10,2)")
+                        .HasDefaultValue(5m);
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
                     b.Property<decimal>("StockQuantity")
                         .HasColumnType("decimal(10,2)");
 
@@ -197,6 +212,9 @@ namespace Project.Migrations
                     b.HasKey("FabricId");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("Sku")
+                        .IsUnique();
 
                     b.HasIndex("SupplierId");
 
@@ -243,11 +261,35 @@ namespace Project.Migrations
                     b.Property<int>("FabricId")
                         .HasColumnType("int");
 
+                    b.Property<string>("CategoryName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<string>("ProductSku")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
                     b.Property<decimal>("Quantity")
                         .HasColumnType("decimal(65,30)");
 
                     b.Property<int>("SaleId")
                         .HasColumnType("int");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(10,2)");
@@ -259,6 +301,48 @@ namespace Project.Migrations
                     b.HasIndex("SaleId");
 
                     b.ToTable("SaleItems");
+                });
+
+            modelBuilder.Entity("FabriTrack.Models.InventoryMovement", b =>
+                {
+                    b.Property<int>("InventoryMovementId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("FabricId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MovementType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(250)
+                        .HasColumnType("varchar(250)");
+
+                    b.Property<decimal>("QuantityChange")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<int?>("SaleId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("varchar(450)");
+
+                    b.HasKey("InventoryMovementId");
+
+                    b.HasIndex("FabricId", "RecordedAt");
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("InventoryMovements");
                 });
 
             modelBuilder.Entity("FabriTrack.Models.Supplier", b =>
@@ -469,6 +553,24 @@ namespace Project.Migrations
                     b.Navigation("Sale");
                 });
 
+            modelBuilder.Entity("FabriTrack.Models.InventoryMovement", b =>
+                {
+                    b.HasOne("FabriTrack.Models.Fabric", "Fabric")
+                        .WithMany("InventoryMovements")
+                        .HasForeignKey("FabricId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FabriTrack.Models.Sale", "Sale")
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Fabric");
+
+                    b.Navigation("Sale");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -532,6 +634,8 @@ namespace Project.Migrations
 
             modelBuilder.Entity("FabriTrack.Models.Fabric", b =>
                 {
+                    b.Navigation("InventoryMovements");
+
                     b.Navigation("SaleItems");
                 });
 

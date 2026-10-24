@@ -1,111 +1,212 @@
 @model IEnumerable<FabriTrack.Models.Fabric>
 @{
-    ViewData["Title"] = "Inventory";
+    var showingArchived = (bool)ViewBag.IncludeArchived;
+    ViewData["Title"] = showingArchived ? "Archived Products" : "Product Inventory";
+    var isAdmin = User.IsInRole(FabriTrack.Models.Roles.Admin);
 }
 
-<div class="page-header">
-    <h2><i class="bi bi-boxes me-2"></i>Fabric inventory</h2>
-    @if (User.IsInRole("Admin"))
+<div class="page-header inventory-page-header">
+    <div>
+        <h2><i class="bi @(showingArchived ? "bi-archive" : "bi-boxes") me-2"></i>@(showingArchived ? "Archived products" : "Product inventory")</h2>
+        <p class="text-muted mb-0">@(showingArchived ? "Restore products to make them available for new sales again." : "Manage products, variants, prices, and stock levels.")</p>
+    </div>
+    @if (isAdmin && !showingArchived)
     {
-        <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>Add fabric</a>
+        <a class="btn btn-primary inventory-add-button" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>Add product</a>
     }
 </div>
 
-<form method="get" class="row g-2 mb-4">
-    <div class="col-md-4">
-        <div class="input-group">
-            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-            <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Search by name or color..." />
-        </div>
-    </div>
-    <div class="col-md-3">
-        <select name="categoryId" class="form-select" asp-items="ViewBag.Categories">
-            <option value="">All categories</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <button type="submit" class="btn btn-outline-secondary w-100"><i class="bi bi-funnel me-1"></i>Filter</button>
-    </div>
-    @if (!string.IsNullOrWhiteSpace((string)ViewBag.Search) || ViewBag.CategoryId != null)
+<nav class="inventory-tabs mb-3" aria-label="Product inventory views">
+    <a asp-action="Index" asp-route-search="@ViewBag.Search" asp-route-categoryId="@ViewBag.CategoryId"
+       asp-route-supplierId="@ViewBag.SupplierId" asp-route-unit="@ViewBag.Unit"
+       asp-route-stockStatus="@ViewBag.StockStatus" asp-route-sort="@ViewBag.Sort"
+       class="inventory-tab @(!showingArchived ? "active" : "")" aria-current="@(!showingArchived ? "page" : null)">
+        <i class="bi bi-box-seam"></i>
+        Active products
+        <span class="inventory-tab-count">@ViewBag.ActiveProductCount</span>
+    </a>
+    @if (isAdmin)
     {
-        <div class="col-md-2">
-            <a asp-action="Index" class="btn btn-outline-secondary w-100"><i class="bi bi-x-lg me-1"></i>Clear</a>
-        </div>
+        <a asp-action="Index" asp-route-includeArchived="true" asp-route-search="@ViewBag.Search"
+           asp-route-categoryId="@ViewBag.CategoryId" asp-route-supplierId="@ViewBag.SupplierId"
+           asp-route-unit="@ViewBag.Unit" asp-route-stockStatus="@ViewBag.StockStatus"
+           asp-route-sort="@ViewBag.Sort"
+           class="inventory-tab @(showingArchived ? "active" : "")" aria-current="@(showingArchived ? "page" : null)">
+            <i class="bi bi-archive"></i>
+            Archived
+            <span class="inventory-tab-count">@ViewBag.ArchivedProductCount</span>
+        </a>
     }
+</nav>
+
+<form method="get" class="inventory-filters mb-4">
+    @if (showingArchived)
+    {
+        <input type="hidden" name="includeArchived" value="true" />
+    }
+    <div class="inventory-filter-grid">
+        <div class="inventory-filter-search">
+            <label class="form-label" for="inventorySearch">Search</label>
+            <input id="inventorySearch" type="search" name="search" value="@ViewBag.Search" class="form-control" placeholder="Name, SKU, color, pattern" />
+        </div>
+        <div>
+            <label class="form-label" for="categoryFilter">Category</label>
+            <select id="categoryFilter" name="categoryId" class="form-select" asp-items="ViewBag.Categories">
+                <option value="">All categories</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="supplierFilter">Supplier</label>
+            <select id="supplierFilter" name="supplierId" class="form-select" asp-items="ViewBag.Suppliers">
+                <option value="">All suppliers</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="unitFilter">Unit</label>
+            <select id="unitFilter" name="unit" class="form-select">
+                <option value="">All units</option>
+                <option value="yard" selected="@(ViewBag.Unit as string == "yard")">Yard</option>
+                <option value="meter" selected="@(ViewBag.Unit as string == "meter")">Meter</option>
+                <option value="roll" selected="@(ViewBag.Unit as string == "roll")">Roll</option>
+                <option value="piece" selected="@(ViewBag.Unit as string == "piece")">Piece</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="stockFilter">Stock status</label>
+            <select id="stockFilter" name="stockStatus" class="form-select">
+                <option value="">All stock</option>
+                <option value="out" selected="@(ViewBag.StockStatus as string == "out")">Out of stock</option>
+                <option value="low" selected="@(ViewBag.StockStatus as string == "low")">At reorder level</option>
+                <option value="in" selected="@(ViewBag.StockStatus as string == "in")">Above reorder level</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="sortFilter">Sort</label>
+            <select id="sortFilter" name="sort" class="form-select">
+                <option value="name" selected="@(ViewBag.Sort as string == "name")">Name</option>
+                <option value="name-desc" selected="@(ViewBag.Sort as string == "name-desc")">Z–A</option>
+                <option value="stock" selected="@(ViewBag.Sort as string == "stock")">Stock ↑</option>
+                <option value="stock-desc" selected="@(ViewBag.Sort as string == "stock-desc")">Stock ↓</option>
+                <option value="price" selected="@(ViewBag.Sort as string == "price")">Price ↑</option>
+                <option value="price-desc" selected="@(ViewBag.Sort as string == "price-desc")">Price ↓</option>
+            </select>
+        </div>
+        <div class="inventory-filter-actions">
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-funnel me-1"></i>Apply filters</button>
+            <a asp-action="Index" asp-route-includeArchived="@showingArchived" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>Clear</a>
+        </div>
+    </div>
 </form>
 
 @if (!Model.Any())
 {
     <div class="text-center text-muted py-5">
         <i class="bi bi-inbox display-6 d-block mb-2"></i>
-        No fabrics match your search.
+        <h5>@(showingArchived ? "No archived products" : "No matching products")</h5>
+        <p class="mb-0">@(showingArchived ? "Products you archive will be listed here." : "Adjust the filters or add a product to your inventory.")</p>
     </div>
 }
 else
 {
     <div class="fabric-grid">
-        @foreach (var f in Model)
+        @foreach (var product in Model)
         {
-            var qty = f.StockQuantity;
-            // Fabric.ReorderLevel was removed from the model. Keep the stock bar simple:
-            // show a neutral bar when stock > 0, and an explicit 'out of stock' indicator when <= 0.
-            var pct = 100;
-            var barColor = qty <= 0 ? "low" : "ok";
+            var isOut = product.StockQuantity <= 0;
+            var isLow = !isOut && product.StockQuantity <= product.ReorderLevel;
+            var isArchived = !product.IsActive;
+            var percentage = product.ReorderLevel <= 0
+                ? (isOut ? 0 : 100)
+                : (int)Math.Clamp(decimal.Round(product.StockQuantity / product.ReorderLevel * 100), 0, 100);
+            var barColor = isOut || isLow ? "low" : "ok";
 
-            <div class="fabric-card @(qty <= 0 ? "low-stock" : "")">
+            <article class="fabric-card inventory-product-card @(isOut || isLow ? "low-stock" : "")">
                 <div class="fabric-top">
                     <div class="d-flex align-items-center gap-2">
-                        <div>
+                        <div class="inventory-product-image">
                             @{
-                                var src = Html.NormalizeImageUrl(f.ImageUrl);
+                                var src = Html.NormalizeImageUrl(product.ImageUrl);
                             }
                             @if (!string.IsNullOrWhiteSpace(src))
                             {
-                                <img src="@src" alt="@f.Name" class="swatch-circle img-fluid" style="width:56px;height:56px;border-radius:12px;object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling && this.nextElementSibling.classList.remove('d-none');" />
-                                <div class="swatch-placeholder d-none" style="width:56px;height:56px;border-radius:12px;background: linear-gradient(90deg, var(--ft-primary), var(--ft-accent));"></div>
+                                <img src="@src" alt="@product.Name" class="swatch-circle img-fluid" onerror="this.style.display='none'; this.nextElementSibling && this.nextElementSibling.classList.remove('d-none');" />
+                                <div class="swatch-placeholder d-none" aria-hidden="true"></div>
                             }
                             else
                             {
-                                <div class="swatch-circle" style="background: linear-gradient(90deg, var(--ft-primary), var(--ft-accent));" aria-hidden="true"></div>
+                                <div class="swatch-circle inventory-image-placeholder" aria-hidden="true"><i class="bi bi-scissors"></i></div>
                             }
                         </div>
-                        <div>
-                            <div class="fabric-name">@f.Name</div>
-                            <div class="fabric-meta">
-                                <span class="category-chip">@f.Category?.Name</span>
-                                @if (!string.IsNullOrWhiteSpace(f.Color))
+                        <div class="min-w-0">
+                            <div class="fabric-name">@product.Name</div>
+                            <div class="fabric-meta d-flex align-items-center flex-wrap gap-2">
+                                <span class="category-chip">@(product.Category?.Name ?? "Uncategorized")</span>
+                                @if (!string.IsNullOrWhiteSpace(product.Color))
                                 {
-                                    <text> · <small class="text-muted">@f.Color</small></text>
+                                    <span class="inventory-color">@product.Color</span>
                                 }
                             </div>
+                            <small class="inventory-sku">@product.Sku</small>
                         </div>
                     </div>
-                    <div class="price">₱@f.PricePerUnit.ToString("N2")</div>
                 </div>
+                <div class="inventory-product-price">₱@product.PricePerUnit.ToString("N2") <span>per @product.Unit</span></div>
                 <div class="fabric-body">
-                    <div class="fabric-meta">Stock: @String.Format("{0:0.##}", f.StockQuantity) @f.Unit</div>
-                    <div class="stock-bar mt-2" aria-hidden="true"><i class="stock-bar-@barColor" style="width:@pct%"></i></div>
-                    @if (qty <= 0)
+                    <div class="inventory-stock-summary">
+                        <div>
+                            <small>On hand</small>
+                            <strong>@product.StockQuantity.ToString("0.##") <span>@product.Unit</span></strong>
+                        </div>
+                        <div class="text-end">
+                            <small>Reorder point</small>
+                            <strong>@product.ReorderLevel.ToString("0.##") <span>@product.Unit</span></strong>
+                        </div>
+                    </div>
+                    <div class="stock-bar mt-2" aria-hidden="true"><i class="stock-bar-@barColor" style="width:@percentage%"></i></div>
+                    @if (isArchived)
                     {
-                        <div class="low-stock-flag"><i class="bi bi-exclamation-triangle-fill me-1"></i>Out of stock</div>
+                        <span class="inventory-status archived"><i class="bi bi-archive"></i> Archived</span>
+                    }
+                    else if (isOut)
+                    {
+                        <span class="inventory-status out"><i class="bi bi-exclamation-circle-fill"></i> Out of stock</span>
+                    }
+                    else if (isLow)
+                    {
+                        <span class="inventory-status low"><i class="bi bi-exclamation-triangle-fill"></i> Reorder soon</span>
+                    }
+                    else
+                    {
+                        <span class="inventory-status healthy"><i class="bi bi-check-circle-fill"></i> In stock</span>
                     }
                 </div>
                 <div class="fabric-actions">
-                    <a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@f.FabricId" title="View" aria-label="View"><i class="bi bi-eye"></i></a>
-                    @if (User.IsInRole("Admin"))
+                    <a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@product.FabricId" title="View product" aria-label="View product"><i class="bi bi-eye"></i></a>
+                    @if (isAdmin)
                     {
-                        <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#restockModal"
-                                data-fabric-id="@f.FabricId" data-item-name="@f.Name" data-current-stock="@f.StockQuantity @f.Unit" title="Restock" aria-label="Restock">
-                            <i class="bi bi-box-arrow-in-up"></i>
-                        </button>
-                        <a class="btn btn-sm btn-outline-warning" asp-action="Edit" asp-route-id="@f.FabricId" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
-                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
-                                data-form-action="@Url.Action("Delete", "Fabrics", new { id = f.FabricId })" data-item-name="@f.Name" title="Delete" aria-label="Delete">
-                            <i class="bi bi-trash3"></i>
-                        </button>
+                        if (isArchived)
+                        {
+                            <form asp-action="Restore" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@product.FabricId" />
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Restore product" aria-label="Restore product"><i class="bi bi-arrow-counterclockwise"></i></button>
+                            </form>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#restockModal"
+                                    data-fabric-id="@product.FabricId" data-item-name="@product.Name" data-current-stock="@product.StockQuantity @product.Unit" data-unit="@product.Unit" title="Restock" aria-label="Restock">
+                                <i class="bi bi-box-arrow-in-up"></i>
+                            </button>
+                            <a class="btn btn-sm btn-outline-warning" asp-action="Edit" asp-route-id="@product.FabricId" title="Edit product" aria-label="Edit product"><i class="bi bi-pencil"></i></a>
+                            <form asp-action="Archive" method="post" class="d-inline" onsubmit="return confirm('Archive this product? Its sales and inventory history will be kept.');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@product.FabricId" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Archive product" aria-label="Archive product"><i class="bi bi-archive"></i></button>
+                            </form>
+                        }
                     }
                 </div>
-            </div>
+            </article>
         }
     </div>
 }

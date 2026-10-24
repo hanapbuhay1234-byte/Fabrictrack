@@ -78,26 +78,30 @@ namespace FabriTrack.Controllers
                 .Where(item => item.Sale != null &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
-                .GroupBy(item => new { item.Fabric!.Name, item.Fabric.Unit })
+                .GroupBy(item => new { item.ProductSku, item.ProductName, item.Color, item.Unit })
                 .Select(group => new DashboardTopFabric
                 {
-                    Name = group.Key.Name,
+                    Sku = group.Key.ProductSku,
+                    Name = group.Key.ProductName,
+                    Color = group.Key.Color,
                     Unit = group.Key.Unit,
                     QuantitySold = group.Sum(item => item.Quantity),
                     Revenue = group.Sum(item => item.Quantity * item.UnitPrice)
                 })
-                .OrderByDescending(fabric => fabric.QuantitySold)
-                .ThenByDescending(fabric => fabric.Revenue)
+                .OrderByDescending(fabric => fabric.Revenue)
+                .ThenByDescending(fabric => fabric.QuantitySold)
                 .Take(5)
                 .ToListAsync();
 
-            model.OutOfStockCount = await _context.Fabrics.CountAsync(fabric => fabric.StockQuantity <= 0);
+            model.OutOfStockCount = await _context.Fabrics.CountAsync(fabric =>
+                fabric.IsActive && fabric.StockQuantity <= 0);
             model.LowStockCount = await _context.Fabrics.CountAsync(fabric =>
-                fabric.StockQuantity > 0 && fabric.StockQuantity <= 5);
+                fabric.IsActive && fabric.StockQuantity > 0 && fabric.StockQuantity <= fabric.ReorderLevel);
             model.StockAlerts = await _context.Fabrics
                 .Include(fabric => fabric.Category)
-                .Where(fabric => fabric.StockQuantity <= 5)
-                .OrderBy(fabric => fabric.StockQuantity)
+                .Where(fabric => fabric.IsActive && fabric.StockQuantity <= fabric.ReorderLevel)
+                .OrderBy(fabric => fabric.StockQuantity <= 0 ? 0 : 1)
+                .ThenBy(fabric => fabric.StockQuantity)
                 .ThenBy(fabric => fabric.Name)
                 .Take(6)
                 .ToListAsync();

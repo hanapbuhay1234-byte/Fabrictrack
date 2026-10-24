@@ -137,11 +137,16 @@
             var id = trigger.getAttribute("data-fabric-id");
             var name = trigger.getAttribute("data-item-name") || "item";
             var stock = trigger.getAttribute("data-current-stock") || "—";
+            var unit = trigger.getAttribute("data-unit") || "yard";
             document.getElementById("restockModalFabricId").value = id;
             document.getElementById("restockModalItemName").textContent = name;
             document.getElementById("restockModalCurrentStock").textContent = stock;
             var qtyInput = document.getElementById("restockModalQuantity");
+            var step = unit === "roll" || unit === "piece" ? "1" : "0.01";
+            qtyInput.step = step;
+            qtyInput.min = step;
             qtyInput.value = "";
+            document.getElementById("restockModalReason").value = "";
         });
     }
 

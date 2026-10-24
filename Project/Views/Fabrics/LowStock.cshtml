@@ -1,10 +1,13 @@
 @model IEnumerable<FabriTrack.Models.Fabric>
-{
-    ViewData["Title"] = "Out of stock";
+@{
+    ViewData["Title"] = "Stock Alerts";
 }
 
 <div class="page-header">
-    <h2><i class="bi bi-exclamation-triangle text-danger me-2"></i>Out of stock</h2>
+    <div>
+        <h2><i class="bi bi-exclamation-triangle text-warning me-2"></i>Stock alerts</h2>
+        <p class="text-muted mb-0">Active products at or below their individual reorder level.</p>
+    </div>
     <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to inventory</a>
 </div>
 
@@ -12,28 +15,31 @@
 {
     <div class="empty-state text-center py-5">
         <i class="bi bi-check-circle display-6 d-block mb-2 text-success"></i>
-        <h5 class="mb-2">Nothing is out of stock right now</h5>
-        <p class="text-muted mb-3">All fabrics currently have stock above zero.</p>
-        <a asp-action="Index" class="btn btn-outline-secondary">Back to inventory</a>
+        <h5 class="mb-2">All clear</h5>
+        <p class="text-muted mb-3">No active products are at or below their reorder level.</p>
+        <a asp-action="Index" class="btn btn-outline-secondary">Open inventory</a>
     </div>
 }
 else
 {
     <div class="table-container">
         <table class="table data-table" data-page-size="10">
-            <thead><tr><th data-sort>Name</th><th data-sort>Category</th><th data-sort>Stock</th><th></th></tr></thead>
+            <thead><tr><th data-sort>Product / SKU</th><th data-sort>Category</th><th data-sort>Stock</th><th data-sort>Reorder level</th><th></th></tr></thead>
             <tbody>
-                @foreach (var f in Model)
+                @foreach (var product in Model)
                 {
+                    var isOut = product.StockQuantity <= 0;
                     <tr>
-                        <td>@f.Name</td>
-                        <td>@f.Category?.Name</td>
-                        <td><span class="badge badge-low">@String.Format("{0:0.##}", f.StockQuantity) @f.Unit</span></td>
-                        <td>
-                            @if (User.IsInRole("Admin"))
+                        <td><strong>@product.Name</strong><div class="small text-muted">@product.Sku@(string.IsNullOrWhiteSpace(product.Color) ? "" : $" · {product.Color}")</div></td>
+                        <td>@product.Category?.Name</td>
+                        <td><span class="badge @(isOut ? "badge-low" : "text-bg-warning")">@product.StockQuantity.ToString("0.##") @product.Unit</span></td>
+                        <td>@product.ReorderLevel.ToString("0.##") @product.Unit</td>
+                        <td class="text-end">
+                            <a asp-action="Details" asp-route-id="@product.FabricId" class="btn btn-sm btn-outline-secondary">Details</a>
+                            @if (User.IsInRole(FabriTrack.Models.Roles.Admin))
                             {
                                 <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#restockModal"
-                                        data-fabric-id="@f.FabricId" data-item-name="@f.Name" data-current-stock="@f.StockQuantity @f.Unit">
+                                        data-fabric-id="@product.FabricId" data-item-name="@product.Name" data-current-stock="@product.StockQuantity @product.Unit" data-unit="@product.Unit">
                                     <i class="bi bi-box-arrow-in-up me-1"></i>Restock
                                 </button>
                             }

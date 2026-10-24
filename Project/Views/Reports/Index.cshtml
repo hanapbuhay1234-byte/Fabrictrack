@@ -177,27 +177,27 @@
             <section class="reports-panel h-100" aria-labelledby="fabricBreakdownHeading">
                 <div class="reports-panel-header">
                     <div>
-                        <h3 id="fabricBreakdownHeading">Sales by fabric</h3>
-                        <p class="text-muted mb-0">Quantity is grouped by fabric and unit; yards and meters are not combined.</p>
+                        <h3 id="fabricBreakdownHeading">Sales by product</h3>
+                        <p class="text-muted mb-0">Variants are grouped by SKU, with each stock unit kept separate.</p>
                     </div>
                 </div>
                 @if (Model.FabricBreakdown.Count == 0)
                 {
                     <div class="reports-empty-state">
                         <i class="bi bi-scissors"></i>
-                        <strong>No fabric sales in this period</strong>
+                        <strong>No product sales in this period</strong>
                     </div>
                 }
                 else
                 {
                     <div class="table-responsive">
                         <table class="table reports-table align-middle mb-0">
-                            <thead><tr><th>Fabric</th><th class="text-end">Quantity sold</th><th class="text-end">Orders</th><th class="text-end">Sales amount</th></tr></thead>
+                            <thead><tr><th>Product / SKU</th><th class="text-end">Quantity sold</th><th class="text-end">Orders</th><th class="text-end">Sales amount</th></tr></thead>
                             <tbody>
                                 @foreach (var fabric in Model.FabricBreakdown)
                                 {
                                     <tr>
-                                        <td><strong>@fabric.Name</strong></td>
+                                        <td><strong>@fabric.Name</strong><div class="small text-muted">@fabric.Sku@(string.IsNullOrWhiteSpace(fabric.Color) ? "" : $" · {fabric.Color}")</div></td>
                                         <td class="text-end text-nowrap">@fabric.QuantitySold.ToString("0.##") @fabric.Unit</td>
                                         <td class="text-end">@fabric.OrderCount</td>
                                         <td class="text-end text-nowrap fw-semibold">₱@fabric.Revenue.ToString("N2")</td>

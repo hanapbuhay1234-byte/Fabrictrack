@@ -28,7 +28,9 @@ namespace FabriTrack.Models
 
     public class DashboardTopFabric
     {
+        public string Sku { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public string? Color { get; set; }
         public string Unit { get; set; } = string.Empty;
         public decimal QuantitySold { get; set; }
         public decimal Revenue { get; set; }

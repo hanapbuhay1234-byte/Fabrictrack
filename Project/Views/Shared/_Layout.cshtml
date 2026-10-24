@@ -51,8 +51,8 @@
             <a class="@NavClass("Reports")" asp-controller="Reports" asp-action="Index"><i class="bi bi-graph-up-arrow"></i> Sales Analytics</a>
 
             <div class="nav-section-label">Inventory</div>
-            <a class="@NavClass("Fabrics", "LowStock")" asp-controller="Fabrics" asp-action="Index"><i class="bi bi-boxes"></i> Fabrics</a>
-            <a class="@NavClassAct("Fabrics","LowStock")" asp-controller="Fabrics" asp-action="LowStock"><i class="bi bi-exclamation-triangle"></i> Out of stock</a>
+            <a class="@NavClass("Fabrics", "LowStock")" asp-controller="Fabrics" asp-action="Index"><i class="bi bi-boxes"></i> Product Inventory</a>
+            <a class="@NavClassAct("Fabrics","LowStock")" asp-controller="Fabrics" asp-action="LowStock"><i class="bi bi-exclamation-triangle"></i> Stock alerts</a>
             <a class="@NavClass("Categories")" asp-controller="Categories" asp-action="Index"><i class="bi bi-tags"></i> Categories</a>
             <a class="@NavClass("Suppliers")" asp-controller="Suppliers" asp-action="Index"><i class="bi bi-truck"></i> Suppliers</a>
 
@@ -84,7 +84,7 @@
             </main>
 
             <footer class="border-top footer py-3 px-4">
-                &copy; @DateTime.Now.Year FabriTrack — fabric inventory &amp; sales
+                &copy; @DateTime.Now.Year FabriTrack — product inventory &amp; sales
             </footer>
         </div>
     </div>

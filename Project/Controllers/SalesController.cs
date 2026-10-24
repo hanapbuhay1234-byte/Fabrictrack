@@ -11,6 +11,8 @@ namespace FabriTrack.Controllers
     [Authorize]
     public class SalesController : Controller
     {
+        private sealed class CheckoutValidationException(string message) : Exception(message) { }
+
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
 
@@ -57,33 +59,39 @@ namespace FabriTrack.Controllers
         {
             if (fabricIds.Count == 0 || fabricIds.Count != quantities.Count)
             {
-                ModelState.AddModelError("", "Please add at least one valid fabric line item.");
+                ModelState.AddModelError("", "Please add at least one valid product line item.");
             }
 
             if (fabricIds.Count == quantities.Count)
             {
                 for (var i = 0; i < quantities.Count; i++)
                 {
-                    if (quantities[i] <= 0)
-                        ModelState.AddModelError("", "Each item quantity must be greater than zero.");
+                    if (quantities[i] <= 0 || decimal.Round(quantities[i], 2) != quantities[i])
+                        ModelState.AddModelError("", "Each item quantity must be positive and use at most two decimal places.");
                 }
 
-                if (fabricIds.Count > 0 && quantities.All(quantity => quantity > 0))
+                if (fabricIds.Count > 0 && quantities.All(quantity =>
+                    quantity > 0 && decimal.Round(quantity, 2) == quantity))
                 {
                     var requestedQuantities = Enumerable.Range(0, fabricIds.Count)
                         .GroupBy(index => fabricIds[index])
                         .ToDictionary(group => group.Key, group => group.Sum(index => quantities[index]));
                     var fabrics = await _context.Fabrics
-                        .Where(fabric => requestedQuantities.Keys.Contains(fabric.FabricId))
+                        .Include(fabric => fabric.Category)
+                        .Where(fabric => fabric.IsActive && requestedQuantities.Keys.Contains(fabric.FabricId))
                         .ToDictionaryAsync(fabric => fabric.FabricId);
 
                     foreach (var (fabricId, requestedQuantity) in requestedQuantities)
                     {
                         if (!fabrics.TryGetValue(fabricId, out var fabric))
                         {
-                            ModelState.AddModelError("", "One of the selected fabrics could not be found. Refresh the page and try again.");
+                            ModelState.AddModelError("", "One of the selected products is unavailable. Refresh the page and try again.");
                             continue;
                         }
+
+                        if (ProductUnits.IsDiscrete(fabric.Unit) &&
+                            requestedQuantity != decimal.Truncate(requestedQuantity))
+                            ModelState.AddModelError("", $"'{fabric.Name}' is sold by whole {fabric.Unit} quantities.");
 
                         if (fabric.StockQuantity < requestedQuantity)
                             ModelState.AddModelError("", $"Not enough stock for '{fabric.Name}'. Available: {fabric.StockQuantity:0.##} {fabric.Unit}.");
@@ -113,15 +121,23 @@ namespace FabriTrack.Controllers
                     SaleDate = DateTime.Now
                 };
                 _context.Sales.Add(sale);
+                await _context.SaveChangesAsync();
 
                 decimal total = 0;
                 foreach (var (fabricId, quantity) in itemQuantities)
                 {
-                    var fabric = await _context.Fabrics.FindAsync(fabricId);
-                    if (fabric == null)
+                    var fabric = await _context.Fabrics
+                        .Include(product => product.Category)
+                        .FirstOrDefaultAsync(product => product.FabricId == fabricId);
+                    if (fabric == null || !fabric.IsActive)
                     {
-                        throw new InvalidOperationException($"Fabric {fabricId} was not found during checkout.");
+                        throw new CheckoutValidationException($"Product {fabricId} is no longer available. Please refresh the catalog.");
                     }
+
+                    if (ProductUnits.IsDiscrete(fabric.Unit) && quantity != decimal.Truncate(quantity))
+                        throw new CheckoutValidationException($"'{fabric.Name}' is sold by whole {fabric.Unit} quantities.");
+                    if (fabric.StockQuantity < quantity)
+                        throw new CheckoutValidationException($"Not enough stock for '{fabric.Name}'. Available: {fabric.StockQuantity:0.##} {fabric.Unit}.");
 
                     fabric.StockQuantity -= quantity;
 
@@ -129,10 +145,24 @@ namespace FabriTrack.Controllers
                     {
                         Sale = sale,
                         FabricId = fabric.FabricId,
+                        ProductSku = fabric.Sku,
+                        ProductName = fabric.Name,
+                        Color = fabric.Color,
+                        CategoryName = fabric.Category?.Name ?? "Uncategorized",
+                        Unit = fabric.Unit,
                         Quantity = quantity,
                         UnitPrice = fabric.PricePerUnit
                     };
                     sale.SaleItems.Add(line);
+                    _context.InventoryMovements.Add(new InventoryMovement
+                    {
+                        FabricId = fabric.FabricId,
+                        SaleId = sale.SaleId,
+                        MovementType = "Sale",
+                        QuantityChange = -quantity,
+                        Notes = $"Sale #{sale.SaleId}",
+                        UserId = sale.CashierId
+                    });
                     total += line.Subtotal;
                 }
 
@@ -142,6 +172,12 @@ namespace FabriTrack.Controllers
 
                 TempData["Success"] = $"Sale #{sale.SaleId} recorded — total ₱{total:N2}.";
                 return RedirectToAction(nameof(Receipt), new { id = sale.SaleId });
+            }
+            catch (CheckoutValidationException exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = exception.Message;
+                return RedirectToAction(nameof(Create));
             }
             catch
             {
@@ -154,6 +190,7 @@ namespace FabriTrack.Controllers
         {
             ViewBag.Fabrics = await _context.Fabrics
                 .Include(fabric => fabric.Category)
+                .Where(fabric => fabric.IsActive)
                 .OrderBy(fabric => fabric.Name)
                 .ToListAsync();
             ViewBag.Categories = new SelectList(
