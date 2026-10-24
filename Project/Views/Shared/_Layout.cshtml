@@ -56,6 +56,12 @@
             <a class="@NavClass("Categories")" asp-controller="Categories" asp-action="Index"><i class="bi bi-tags"></i> Categories</a>
             <a class="@NavClass("Suppliers")" asp-controller="Suppliers" asp-action="Index"><i class="bi bi-truck"></i> Suppliers</a>
 
+            @if (User.IsInRole(FabriTrack.Models.Roles.Admin))
+            {
+                <div class="nav-section-label">Administration</div>
+                <a class="@NavClass("UserManagement")" asp-controller="UserManagement" asp-action="Index"><i class="bi bi-person-gear"></i> User management</a>
+            }
+
             <div class="nav-section-label">Sales</div>
             <a class="nav-link" asp-controller="Sales" asp-action="Create"><i class="bi bi-cart-plus"></i> New sale</a>
             <a class="@NavClassAct("Sales","Index")" asp-controller="Sales" asp-action="Index"><i class="bi bi-receipt"></i> Sales history</a>

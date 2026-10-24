@@ -1,0 +1,302 @@
+@model FabriTrack.Models.UserManagementViewModel
+@{
+    ViewData["Title"] = "User Management";
+}
+
+<div class="page-header user-management-header">
+    <div>
+        <h2><i class="bi bi-person-gear me-2"></i>User management</h2>
+        <p class="text-muted mb-0">Create and manage staff access. Staff receive a one-time password and must change it at first sign-in.</p>
+    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStaffModal">
+        <i class="bi bi-person-plus me-1"></i>Add staff
+    </button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.TemporaryPassword))
+{
+    <div class="alert alert-warning user-temp-password" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-key-fill fs-5"></i>
+            <div class="flex-grow-1">
+                <strong>One-time temporary password</strong>
+                <p class="mb-2">Share this with the staff member securely. It will not be shown again, and they must change it at first sign-in.</p>
+                <div class="input-group">
+                    <input id="temporaryPasswordValue" class="form-control font-monospace" value="@Model.TemporaryPassword" readonly aria-label="One-time temporary password" />
+                    <button id="copyTemporaryPassword" class="btn btn-outline-secondary" type="button"><i class="bi bi-clipboard me-1"></i>Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<section class="user-management-summary" aria-label="Staff account summary">
+    <article class="user-summary-card">
+        <span class="user-summary-icon"><i class="bi bi-people"></i></span>
+        <div><small>Staff matching filters</small><strong>@Model.TotalStaff</strong></div>
+    </article>
+    <article class="user-summary-card">
+        <span class="user-summary-icon active"><i class="bi bi-person-check"></i></span>
+        <div><small>Active staff</small><strong>@Model.ActiveStaff</strong></div>
+    </article>
+    <article class="user-summary-card">
+        <span class="user-summary-icon inactive"><i class="bi bi-person-x"></i></span>
+        <div><small>Deactivated staff</small><strong>@Model.InactiveStaff</strong></div>
+    </article>
+</section>
+
+<section class="user-management-panel">
+    <form asp-action="Index" method="get" class="user-management-search">
+        <div>
+            <label for="staffSearch" class="form-label">Search staff</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input id="staffSearch" name="search" value="@Model.Search" class="form-control" type="search" placeholder="Name or email" />
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Search</button>
+        @if (!string.IsNullOrWhiteSpace(Model.Search))
+        {
+            <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+        }
+    </form>
+
+    @if (Model.Staff.Count == 0)
+    {
+        <div class="user-management-empty">
+            <i class="bi bi-person-badge"></i>
+            <h3>@(Model.TotalStaff == 0 && string.IsNullOrWhiteSpace(Model.Search) ? "No staff accounts yet" : "No matching staff accounts")</h3>
+            <p>@(Model.TotalStaff == 0 && string.IsNullOrWhiteSpace(Model.Search) ? "Add a staff account to let your team sign in." : "Try another name or email address.")</p>
+            @if (Model.TotalStaff == 0 && string.IsNullOrWhiteSpace(Model.Search))
+            {
+                <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#createStaffModal">
+                    <i class="bi bi-person-plus me-1"></i>Add staff
+                </button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-container user-management-table-container">
+            <table class="table user-management-table">
+                <thead>
+                    <tr>
+                        <th>Staff member</th>
+                        <th>Email</th>
+                        <th>Account status</th>
+                        <th>Password status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var staff in Model.Staff)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@staff.FullName</td>
+                            <td><a href="mailto:@staff.Email" class="user-email-link">@staff.Email</a></td>
+                            <td>
+                                @if (staff.IsActive)
+                                {
+                                    <span class="badge text-bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-secondary">Deactivated</span>
+                                }
+                            </td>
+                            <td>
+                                @if (staff.RequirePasswordChange)
+                                {
+                                    <span class="badge text-bg-warning">Change required</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Set</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap user-management-actions">
+                                <button type="button" class="btn btn-sm btn-outline-warning"
+                                        data-bs-toggle="modal" data-bs-target="#editStaffModal"
+                                        data-staff-id="@staff.Id" data-staff-name="@staff.FullName" data-staff-email="@staff.Email"
+                                        title="Edit @staff.FullName" aria-label="Edit @staff.FullName">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <form asp-action="ResetPassword" method="post" class="d-inline"
+                                      data-confirm-action="reset-password" data-staff-name="@staff.FullName">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@staff.Id" />
+                                    <input type="hidden" name="search" value="@Model.Search" />
+                                    <input type="hidden" name="page" value="@Model.Page" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Reset password for @staff.FullName" aria-label="Reset password for @staff.FullName">
+                                        <i class="bi bi-key"></i>
+                                    </button>
+                                </form>
+                                <form asp-action="SetActive" method="post" class="d-inline"
+                                      data-confirm-action="@(staff.IsActive ? "deactivate" : "reactivate")" data-staff-name="@staff.FullName">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@staff.Id" />
+                                    <input type="hidden" name="isActive" value="@(!staff.IsActive)" />
+                                    <input type="hidden" name="search" value="@Model.Search" />
+                                    <input type="hidden" name="page" value="@Model.Page" />
+                                    <button type="submit" class="btn btn-sm @(staff.IsActive ? "btn-outline-danger" : "btn-outline-success")"
+                                            title="@(staff.IsActive ? "Deactivate" : "Reactivate") @staff.FullName"
+                                            aria-label="@(staff.IsActive ? "Deactivate" : "Reactivate") @staff.FullName">
+                                        <i class="bi @(staff.IsActive ? "bi-person-x" : "bi-person-check")"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <nav class="user-management-pagination" aria-label="Staff account pages">
+            <span class="text-muted small">Showing @(((Model.Page - 1) * Model.PageSize) + 1)–@Math.Min(Model.Page * Model.PageSize, Model.TotalStaff) of @Model.TotalStaff staff accounts</span>
+            <div class="btn-group btn-group-sm">
+                @if (Model.HasPreviousPage)
+                {
+                    <a class="btn btn-outline-secondary" asp-action="Index" asp-route-search="@Model.Search" asp-route-page="@(Model.Page - 1)">
+                        <i class="bi bi-chevron-left"></i><span class="visually-hidden">Previous</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="btn btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-chevron-left"></i><span class="visually-hidden">Previous</span></span>
+                }
+                <span class="btn btn-outline-secondary disabled" aria-disabled="true">Page @Model.Page of @Model.TotalPages</span>
+                @if (Model.HasNextPage)
+                {
+                    <a class="btn btn-outline-secondary" asp-action="Index" asp-route-search="@Model.Search" asp-route-page="@(Model.Page + 1)">
+                        <i class="bi bi-chevron-right"></i><span class="visually-hidden">Next</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="btn btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-chevron-right"></i><span class="visually-hidden">Next</span></span>
+                }
+            </div>
+        </nav>
+    }
+</section>
+
+<div class="modal fade user-management-modal" id="createStaffModal" tabindex="-1" aria-labelledby="createStaffTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="search" value="@Model.Search" />
+                <input type="hidden" name="page" value="@Model.Page" />
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title fs-5" id="createStaffTitle"><i class="bi bi-person-plus me-2"></i>Add staff account</h2>
+                        <p class="text-muted small mb-0 mt-1">A one-time password will be generated after creation.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body user-management-modal-fields">
+                    <div asp-validation-summary="All" class="text-danger"></div>
+                    <div class="form-group">
+                        <label asp-for="CreateStaff.FullName" class="form-label">Full name</label>
+                        <input asp-for="CreateStaff.FullName" class="form-control" autocomplete="name" />
+                        <span asp-validation-for="CreateStaff.FullName" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="CreateStaff.Email" class="form-label">Work email</label>
+                        <input asp-for="CreateStaff.Email" class="form-control" type="email" autocomplete="email" />
+                        <span asp-validation-for="CreateStaff.Email" class="text-danger"></span>
+                    </div>
+                    <div class="form-text">New accounts receive Staff access only and must change their temporary password at first sign-in.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Create staff</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade user-management-modal" id="editStaffModal" tabindex="-1" aria-labelledby="editStaffTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="Edit" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="EditStaff.Id" id="editStaffId" value="@Model.EditStaff.Id" />
+                <input type="hidden" name="search" value="@Model.Search" />
+                <input type="hidden" name="page" value="@Model.Page" />
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title fs-5" id="editStaffTitle"><i class="bi bi-person-gear me-2"></i>Edit staff account</h2>
+                        <p class="text-muted small mb-0 mt-1">Update the staff member’s name or email.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body user-management-modal-fields">
+                    <div asp-validation-summary="All" class="text-danger"></div>
+                    <div class="form-group">
+                        <label asp-for="EditStaff.FullName" class="form-label">Full name</label>
+                        <input asp-for="EditStaff.FullName" class="form-control" autocomplete="name" />
+                        <span asp-validation-for="EditStaff.FullName" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="EditStaff.Email" class="form-label">Work email</label>
+                        <input asp-for="EditStaff.Email" class="form-control" type="email" autocomplete="email" />
+                        <span asp-validation-for="EditStaff.Email" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const editModal = document.getElementById('editStaffModal');
+            editModal.addEventListener('show.bs.modal', event => {
+                const button = event.relatedTarget;
+                if (!button) return;
+                editModal.querySelector('#editStaffId').value = button.dataset.staffId || '';
+                editModal.querySelector('[name="EditStaff.FullName"]').value = button.dataset.staffName || '';
+                editModal.querySelector('[name="EditStaff.Email"]').value = button.dataset.staffEmail || '';
+            });
+
+            const copyButton = document.getElementById('copyTemporaryPassword');
+            if (copyButton) {
+                copyButton.addEventListener('click', async () => {
+                    const password = document.getElementById('temporaryPasswordValue').value;
+                    try {
+                        await navigator.clipboard.writeText(password);
+                        copyButton.innerHTML = '<i class="bi bi-check-lg me-1"></i>Copied';
+                    } catch (error) {
+                        console.error('Could not copy the temporary password.', error);
+                        copyButton.textContent = 'Select and copy';
+                        document.getElementById('temporaryPasswordValue').select();
+                    }
+                });
+            }
+
+            document.querySelectorAll('form[data-confirm-action]').forEach(form => {
+                form.addEventListener('submit', event => {
+                    const action = form.dataset.confirmAction;
+                    const staffName = form.dataset.staffName;
+                    const message = action === 'reset-password'
+                        ? `Reset the password for ${staffName}? Their current sessions will be invalidated.`
+                        : `${action === 'deactivate' ? 'Deactivate' : 'Reactivate'} ${staffName}?`;
+                    if (!window.confirm(message)) event.preventDefault();
+                });
+            });
+
+            if (@(Model.OpenCreateModal ? "true" : "false"))
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('createStaffModal')).show();
+            if (@(Model.OpenEditModal ? "true" : "false"))
+                bootstrap.Modal.getOrCreateInstance(editModal).show();
+        })();
+    </script>
+}

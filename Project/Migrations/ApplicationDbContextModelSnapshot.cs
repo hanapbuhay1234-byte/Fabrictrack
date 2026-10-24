@@ -42,6 +42,10 @@ namespace Project.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -63,6 +67,9 @@ namespace Project.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("RequirePasswordChange")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("SecurityStamp")

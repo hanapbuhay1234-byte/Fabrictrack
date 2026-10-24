@@ -42,6 +42,16 @@ This file tracks the features and project changes implemented during the current
 - Added clear, accessible list actions, direct phone/email links, and a cleaner profile view.
 - Added completed purchase count and lifetime spend to customer profiles, with server-paged purchase history and direct receipt links.
 - Preserved the existing access policy: authenticated staff can add customers, while editing and deleting remain admin-only.
+
+### User management
+
+- Added an admin-only, searchable, paged staff account management module with create, edit, password reset, deactivate, and reactivate actions; staff accounts are never hard-deleted.
+- New staff receive a cryptographically generated one-time temporary password, assigned Staff role only, and are required to change that password before accessing the application.
+- Added an authenticated password-change page and request gate for temporary-password accounts, plus immediate security-stamp validation so deactivated staff sessions are invalidated.
+- Disabled the public registration endpoint and removed account-creation links; the application bootstrap continues to ensure the initial administrator and both roles exist and assigns Staff to existing users without a role.
+- Raised password requirements to 10 characters with uppercase, lowercase, number, and symbol; staff password resets also force a password change.
+- Added migration `20261024092541_AddStaffAccountLifecycle` for user activation and first-login password-change state.
+- Updated `Project\Database\SETUP.md` to remind operators to apply current migrations before running the updated application.
 - Preserved optional customer selection and server-side checkout pricing/stock validation.
 - Added server-side quantity validation, duplicate-fabric aggregation, and cart restoration when validation fails.
 - Files: `Project\Controllers\SalesController.cs`, `Project\Views\Sales\Create.cshtml`, `Project\wwwroot\css\site.css`

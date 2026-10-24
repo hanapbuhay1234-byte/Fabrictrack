@@ -14,7 +14,11 @@ namespace FabriTrack.Data
             foreach (var role in new[] { Roles.Admin, Roles.Staff })
             {
                 if (!await roleManager.RoleExistsAsync(role))
-                    await roleManager.CreateAsync(new IdentityRole(role));
+                {
+                    var roleResult = await roleManager.CreateAsync(new IdentityRole(role));
+                    if (!roleResult.Succeeded)
+                        throw new InvalidOperationException($"Could not create the '{role}' role: {string.Join("; ", roleResult.Errors.Select(error => error.Description))}");
+                }
             }
 
             var config = services.GetRequiredService<IConfiguration>();
@@ -46,9 +50,28 @@ namespace FabriTrack.Data
                     EmailConfirmed = true
                 };
                 var result = await userManager.CreateAsync(admin, adminPassword);
-                if (result.Succeeded)
+                if (!result.Succeeded)
+                    throw new InvalidOperationException($"Could not create the bootstrap administrator: {string.Join("; ", result.Errors.Select(error => error.Description))}");
+            }
+
+            if (!await userManager.IsInRoleAsync(admin, Roles.Admin))
+            {
+                var roleResult = await userManager.AddToRoleAsync(admin, Roles.Admin);
+                if (!roleResult.Succeeded)
+                    throw new InvalidOperationException($"Could not assign the bootstrap administrator role: {string.Join("; ", roleResult.Errors.Select(error => error.Description))}");
+            }
+
+            foreach (var user in userManager.Users.ToList())
+            {
+                if (await userManager.IsInRoleAsync(user, Roles.Admin))
+                    continue;
+
+                var roles = await userManager.GetRolesAsync(user);
+                if (roles.Count == 0)
                 {
-                    await userManager.AddToRoleAsync(admin, Roles.Admin);
+                    var staffResult = await userManager.AddToRoleAsync(user, Roles.Staff);
+                    if (!staffResult.Succeeded)
+                        throw new InvalidOperationException($"Could not assign the Staff role to '{user.Id}': {string.Join("; ", staffResult.Errors.Select(error => error.Description))}");
                 }
             }
         }

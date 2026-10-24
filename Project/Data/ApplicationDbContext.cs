@@ -71,6 +71,10 @@ namespace FabriTrack.Data
                 .Property(fabric => fabric.IsActive)
                 .HasDefaultValue(true);
 
+            builder.Entity<ApplicationUser>()
+                .Property(user => user.IsActive)
+                .HasDefaultValue(true);
+
             builder.Entity<InventoryMovement>()
                 .HasOne(movement => movement.Fabric)
                 .WithMany(fabric => fabric.InventoryMovements)
