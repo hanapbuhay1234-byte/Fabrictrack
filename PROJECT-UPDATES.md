@@ -68,6 +68,8 @@ This file tracks the features and project changes implemented during the current
 - Added a data-preserving migration that backfills SKUs, reorder levels, active status, historical sale-item snapshots, and opening stock balances.
 - Refined the Product Inventory UI with full-width responsive filters, readable product cards, clearer on-hand/reorder hierarchy, and consistent stock-status styling across screen sizes.
 - Added dedicated Active and Archived inventory tabs with item counts, and rebuilt the add/edit forms and product details page into clear, responsive identity, pricing, stock, and activity sections.
+- Added an immediate image preview when selecting a product image on the Add Product form.
+- Refined inventory cards with a prominent selling price and unit, supplier/pattern context, clearer stock health colors, and an easy-to-find View Details action.
 - Updated setup instructions to apply the migration after importing the checked-in SQL database.
 - Files: `Project\Controllers\FabricsController.cs`, `Project\Controllers\SalesController.cs`, `Project\Controllers\HomeController.cs`, `Project\Controllers\ReportsController.cs`, `Project\Models\Fabric.cs`, `Project\Models\Sale.cs`, `Project\Models\DashboardViewModel.cs`, `Project\Models\SalesReportViewModel.cs`, `Project\Data\ApplicationDbContext.cs`, `Project\Data\Migrations\20261024170000_AddProductInventory.cs`, `Project\Migrations\ApplicationDbContextModelSnapshot.cs`, related inventory/sales/dashboard/report views, `Project\Views\Shared\_Layout.cshtml`, `Project\Views\Shared\_RestockModal.cshtml`, `Project\wwwroot\js\site.js`, `Project\Database\SETUP.md`
 

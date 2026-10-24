@@ -1419,24 +1419,31 @@ table.data-table thead th[data-sort] {
     min-width: 0;
     border-radius: var(--ft-radius);
     box-shadow: 0 6px 18px rgba(12,18,28,0.035);
+    transition: transform var(--ft-transition), box-shadow var(--ft-transition), border-color var(--ft-transition);
 }
 
 .inventory-product-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 14px 30px rgba(12,18,28,0.09);
+    border-color: color-mix(in srgb, var(--ft-primary) 35%, var(--ft-border));
 }
 
 .inventory-product-card .fabric-top {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     justify-content: stretch;
-    align-items: start;
-    gap: 0.85rem;
-    min-height: 132px;
-    padding: 1rem 1rem 0.85rem;
+    align-items: center;
+    gap: 0.7rem;
+    min-height: 0;
+    padding: 1rem 1rem 0.8rem;
 }
 
-.inventory-product-card .fabric-top > .d-flex { min-width: 0; }
+.inventory-product-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.8rem;
+}
 
 .inventory-product-image,
 .inventory-product-image > img,
@@ -1454,13 +1461,15 @@ table.data-table thead th[data-sort] {
 .inventory-product-image > img {
     object-fit: cover;
     border: 1px solid var(--ft-border);
+    background: var(--ft-bg);
 }
 
+.inventory-product-card .inventory-product-image { width: 62px; height: 62px; flex-basis: 62px; }
 .inventory-product-card .inventory-product-image > img,
 .inventory-product-card .inventory-image-placeholder {
-    width: 54px;
-    height: 54px;
-    border-radius: 12px;
+    width: 62px;
+    height: 62px;
+    border-radius: 13px;
 }
 
 .inventory-product-image > .swatch-placeholder,
@@ -1474,10 +1483,12 @@ table.data-table thead th[data-sort] {
     overflow-wrap: anywhere;
     color: var(--ft-text);
     font-size: 1rem;
+    font-weight: 700;
     line-height: 1.3;
 }
 
-.inventory-product-card .fabric-meta { margin-top: 0.35rem; }
+.inventory-product-identity { min-width: 0; }
+.inventory-product-card .fabric-meta { margin-top: 0.4rem; }
 
 .inventory-product-card .category-chip {
     display: inline-flex;
@@ -1485,6 +1496,25 @@ table.data-table thead th[data-sort] {
     font-size: 0.7rem;
     line-height: 1.4;
 }
+
+.inventory-product-context {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+    padding-left: calc(62px + 0.8rem);
+    color: var(--ft-muted);
+    font-size: 0.73rem;
+}
+
+.inventory-product-context span {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.3rem;
+    overflow-wrap: anywhere;
+}
+
+.inventory-product-context .bi { color: var(--ft-primary); }
 
 .inventory-color,
 .inventory-sku {
@@ -1499,27 +1529,56 @@ table.data-table thead th[data-sort] {
     letter-spacing: 0.015em;
 }
 
-.inventory-product-price {
-    color: var(--ft-text);
-    font-size: 1rem;
-    letter-spacing: -0.015em;
+.inventory-pricing-panel {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--ft-primary) 16%, var(--ft-border));
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--ft-primary) 6%, var(--ft-surface));
 }
 
-.inventory-product-price span {
+.inventory-pricing-panel > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.inventory-pricing-panel small {
     color: var(--ft-muted);
-    font-family: var(--ft-font);
-    font-size: 0.8rem;
-    font-weight: 500;
+    font-size: 0.69rem;
+    font-weight: 650;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+}
+
+.inventory-pricing-panel strong {
+    color: var(--ft-text);
+    font-size: 1.3rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 750;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+}
+
+.inventory-price-unit {
+    padding-bottom: 0.1rem;
+    color: var(--ft-muted);
+    font-size: 0.78rem;
+    white-space: nowrap;
 }
 
 .inventory-product-card .fabric-body {
-    gap: 0.7rem;
-    padding: 0.85rem 1rem 1rem;
+    gap: 0.8rem;
+    padding: 0.15rem 1rem 1rem;
 }
 
 .inventory-stock-summary {
     display: flex;
-    align-items: end;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
 }
@@ -1540,6 +1599,7 @@ table.data-table thead th[data-sort] {
     color: var(--ft-text);
     font-size: 0.92rem;
     font-weight: 650;
+    font-variant-numeric: tabular-nums;
 }
 
 .inventory-stock-summary strong span {
@@ -1550,8 +1610,18 @@ table.data-table thead th[data-sort] {
 
 .inventory-product-card .stock-bar {
     height: 6px;
-    margin-top: 0 !important;
+    width: 100%;
+    margin-top: -0.25rem;
+    background: color-mix(in srgb, var(--ft-muted) 18%, var(--ft-surface));
 }
+
+.inventory-stock-bar > i {
+    border-radius: inherit;
+    transition: width 240ms ease;
+}
+
+.inventory-stock-bar > i.stock-bar-warn { background: var(--ft-warning); }
+.inventory-stock-bar > i.stock-bar-low { background: var(--ft-danger); }
 
 .inventory-status {
     display: inline-flex;
@@ -1564,22 +1634,40 @@ table.data-table thead th[data-sort] {
 }
 
 .inventory-status.healthy { color: var(--ft-success); }
-.inventory-status.low { color: #b7791f; }
+.inventory-status.low { color: var(--ft-warning); }
 .inventory-status.out { color: var(--ft-danger); }
 .inventory-status.archived { color: var(--ft-muted); }
 
 .inventory-product-card .fabric-actions {
-    flex-wrap: wrap;
+    align-items: center;
     gap: 0.45rem;
-    padding: 0.75rem 1rem;
+    padding: 0.7rem 1rem;
     border-top: 1px solid var(--ft-border);
     background: color-mix(in srgb, var(--ft-surface) 92%, var(--ft-bg));
+}
+
+.inventory-product-card .inventory-view-button {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    margin-right: auto;
+    padding: 0.35rem 0.65rem;
+    border-radius: 9px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 .inventory-product-card .fabric-actions .btn {
     width: 38px;
     height: 38px;
     border-radius: 9px;
+}
+
+.inventory-product-card .fabric-actions .inventory-view-button {
+    width: auto;
+    min-width: 0;
+    padding: 0.35rem 0.65rem;
 }
 
 .inventory-product-card .fabric-actions form { display: inline-flex; }
@@ -1615,6 +1703,9 @@ table.data-table thead th[data-sort] {
     .inventory-filter-actions .btn { width: 100%; }
     .fabric-grid { grid-template-columns: minmax(0, 1fr); }
     .inventory-product-card .fabric-top { min-height: auto; }
+    .inventory-product-context { padding-left: 0; }
+    .inventory-pricing-panel strong { font-size: 1.2rem; }
+    .inventory-product-card .fabric-actions .inventory-view-button { padding-inline: 0.5rem; }
 }
 
 /* ---- Inventory tabs, editor, and product detail ---- */

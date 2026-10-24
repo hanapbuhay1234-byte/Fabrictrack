@@ -95,11 +95,15 @@
                     <span class="inventory-section-icon"><i class="bi bi-image"></i></span>
                     <div><h3>Product image</h3><p>Help staff recognize the product in the catalog.</p></div>
                 </div>
-                <div class="inventory-field">
-                    <label for="ImageFile" class="form-label">Upload image <span class="text-muted fw-normal">Optional</span></label>
-                    <input id="ImageFile" name="ImageFile" type="file" accept=".jpg,.jpeg,.png,.webp" class="form-control" />
-                    <span asp-validation-for="ImageUrl" class="text-danger"></span>
-                    <small>JPG, PNG, or WEBP. Maximum 3 MB.</small>
+                <div class="inventory-image-editor">
+                    <div id="imagePreviewPlaceholder" class="inventory-image-preview inventory-image-empty"><i class="bi bi-image"></i></div>
+                    <img id="imagePreview" class="inventory-image-preview" alt="Selected product image preview" hidden />
+                    <div class="inventory-field">
+                        <label for="ImageFile" class="form-label">Upload image <span class="text-muted fw-normal">Optional</span></label>
+                        <input id="ImageFile" name="ImageFile" type="file" accept=".jpg,.jpeg,.png,.webp" class="form-control" />
+                        <span asp-validation-for="ImageUrl" class="text-danger"></span>
+                        <small>JPG, PNG, or WEBP. Maximum 3 MB.</small>
+                    </div>
                 </div>
             </section>
         </div>
@@ -128,10 +132,38 @@
         (() => {
             const unit = document.getElementById('Unit');
             const quantities = [document.getElementById('StockQuantity'), document.getElementById('ReorderLevel')];
+            const imageInput = document.getElementById('ImageFile');
+            const imagePreview = document.getElementById('imagePreview');
+            const imagePreviewPlaceholder = document.getElementById('imagePreviewPlaceholder');
+            let previewUrl;
+
             function syncSteps() {
                 const step = unit.value === 'roll' || unit.value === 'piece' ? '1' : '0.01';
                 quantities.forEach(input => input.step = step);
             }
+
+            imageInput.addEventListener('change', () => {
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+
+                const file = imageInput.files?.[0];
+                if (!file) {
+                    imagePreview.removeAttribute('src');
+                    imagePreview.hidden = true;
+                    imagePreviewPlaceholder.hidden = false;
+                    previewUrl = undefined;
+                    return;
+                }
+
+                previewUrl = URL.createObjectURL(file);
+                imagePreview.src = previewUrl;
+                imagePreview.hidden = false;
+                imagePreviewPlaceholder.hidden = true;
+            });
+
+            window.addEventListener('pagehide', () => {
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+            });
+
             unit.addEventListener('change', syncSteps);
             syncSteps();
         })();

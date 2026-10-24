@@ -117,11 +117,11 @@ else
             var percentage = product.ReorderLevel <= 0
                 ? (isOut ? 0 : 100)
                 : (int)Math.Clamp(decimal.Round(product.StockQuantity / product.ReorderLevel * 100), 0, 100);
-            var barColor = isOut || isLow ? "low" : "ok";
+            var barColor = isOut ? "low" : isLow ? "warn" : "ok";
 
             <article class="fabric-card inventory-product-card @(isOut || isLow ? "low-stock" : "")">
                 <div class="fabric-top">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="inventory-product-heading">
                         <div class="inventory-product-image">
                             @{
                                 var src = Html.NormalizeImageUrl(product.ImageUrl);
@@ -136,7 +136,7 @@ else
                                 <div class="swatch-circle inventory-image-placeholder" aria-hidden="true"><i class="bi bi-scissors"></i></div>
                             }
                         </div>
-                        <div class="min-w-0">
+                        <div class="inventory-product-identity">
                             <div class="fabric-name">@product.Name</div>
                             <div class="fabric-meta d-flex align-items-center flex-wrap gap-2">
                                 <span class="category-chip">@(product.Category?.Name ?? "Uncategorized")</span>
@@ -148,9 +148,28 @@ else
                             <small class="inventory-sku">@product.Sku</small>
                         </div>
                     </div>
+                    @if (!string.IsNullOrWhiteSpace(product.Pattern) || product.Supplier != null)
+                    {
+                        <div class="inventory-product-context">
+                            @if (!string.IsNullOrWhiteSpace(product.Pattern))
+                            {
+                                <span><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i> @product.Pattern</span>
+                            }
+                            @if (product.Supplier != null)
+                            {
+                                <span><i class="bi bi-truck" aria-hidden="true"></i> @product.Supplier.Name</span>
+                            }
+                        </div>
+                    }
                 </div>
-                <div class="inventory-product-price">₱@product.PricePerUnit.ToString("N2") <span>per @product.Unit</span></div>
                 <div class="fabric-body">
+                    <div class="inventory-pricing-panel">
+                        <div>
+                            <small>Selling price</small>
+                            <strong>₱@product.PricePerUnit.ToString("N2")</strong>
+                        </div>
+                        <span class="inventory-price-unit">per @product.Unit</span>
+                    </div>
                     <div class="inventory-stock-summary">
                         <div>
                             <small>On hand</small>
@@ -161,7 +180,10 @@ else
                             <strong>@product.ReorderLevel.ToString("0.##") <span>@product.Unit</span></strong>
                         </div>
                     </div>
-                    <div class="stock-bar mt-2" aria-hidden="true"><i class="stock-bar-@barColor" style="width:@percentage%"></i></div>
+                    <div class="stock-bar inventory-stock-bar" role="meter" aria-label="Stock compared with reorder point"
+                         aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
+                        <i class="stock-bar-@barColor" style="width:@percentage%"></i>
+                    </div>
                     @if (isArchived)
                     {
                         <span class="inventory-status archived"><i class="bi bi-archive"></i> Archived</span>
@@ -180,7 +202,7 @@ else
                     }
                 </div>
                 <div class="fabric-actions">
-                    <a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@product.FabricId" title="View product" aria-label="View product"><i class="bi bi-eye"></i></a>
+                    <a class="btn btn-sm btn-outline-info inventory-view-button" asp-action="Details" asp-route-id="@product.FabricId"><i class="bi bi-eye me-1"></i>View details</a>
                     @if (isAdmin)
                     {
                         if (isArchived)
