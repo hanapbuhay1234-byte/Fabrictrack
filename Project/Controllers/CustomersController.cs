@@ -16,7 +16,7 @@ namespace FabriTrack.Controllers
 
         public async Task<IActionResult> Details(int id)
         {
-            var customer = await _context.Customers.Include(c => c.Sales)
+            var customer = await _context.Customers.Include(c => c.Sales.Where(sale => !sale.IsVoided))
                 .FirstOrDefaultAsync(c => c.CustomerId == id);
             if (customer == null) return NotFound();
             return View(customer);

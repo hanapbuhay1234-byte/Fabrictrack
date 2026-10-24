@@ -428,6 +428,8 @@ footer.footer { color: var(--ft-muted); border-top: 1px solid var(--ft-border) !
 .receipt-total span { font-weight: 650; }
 .receipt-total strong { color: var(--ft-primary); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
 .receipt-thank-you { margin-top: 1.5rem; color: var(--ft-muted); text-align: center; font-size: 0.9rem; }
+.receipt-void-banner { display: grid; gap: 0.25rem; margin: 1rem 0; padding: 0.85rem 1rem; color: var(--ft-danger); border: 1px solid var(--ft-danger); border-radius: 0.5rem; font-size: 0.88rem; }
+.receipt-void-banner strong { letter-spacing: 0.04em; }
 .receipt-page-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.65rem; margin-top: 1.25rem; }
 .receipt-print-note { margin: 0.65rem 0 0; color: var(--ft-muted); text-align: center; font-size: 0.8rem; }
 .receipt-print-status {
@@ -456,6 +458,36 @@ footer.footer { color: var(--ft-muted); border-top: 1px solid var(--ft-border) !
 .sale-review-table thead th { color: var(--ft-muted); font-size: 0.75rem; text-transform: uppercase; }
 .sale-review-total { display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--ft-border); font-weight: 650; }
 .sale-review-total strong { color: var(--ft-primary); font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.sales-history-panel { overflow: hidden; background: var(--ft-surface); border: 1px solid var(--ft-border); border-radius: var(--ft-radius); box-shadow: 0 8px 20px rgba(12,18,28,0.04); }
+.sales-history-header { align-items: flex-start; }
+.sales-history-header p { margin-top: 0.25rem; font-size: 0.88rem; }
+.sales-history-summary .stat-card { height: 100%; padding: 0.9rem 1rem; }
+.sales-history-summary .stat-chip { width: 46px; height: 46px; font-size: 1.05rem; }
+.sales-history-summary .stat-value { font-size: 1.35rem; }
+.sales-history-summary .stat-secondary { font-size: 0.75rem; }
+.sales-history-filters { display: grid; grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(145px, 1fr)) auto; align-items: end; gap: 0.75rem; padding: 1rem; }
+.sales-history-filters .form-label { margin-bottom: 0.35rem; color: var(--ft-muted); font-size: 0.78rem; font-weight: 650; }
+.sales-history-filters .form-control,
+.sales-history-filters .form-select { min-height: 40px; }
+.sales-history-filter-actions { display: flex; gap: 0.4rem; }
+.sales-history-export { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+.sales-history-table-heading { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-top: 1px solid var(--ft-border); }
+.sales-history-table-heading h3 { margin: 0 0 0.2rem; font-size: 1rem; font-weight: 700; }
+.sales-history-table-container { border: 0; border-radius: 0; }
+.sales-history-table { min-width: 780px; }
+.sales-history-table thead th { color: var(--ft-muted); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+.sales-history-table tbody td { vertical-align: middle; }
+.sales-history-pagination { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-top: 1px solid var(--ft-border); }
+.sales-history-empty { padding: 3rem 1rem; color: var(--ft-muted); text-align: center; }
+.sales-history-empty > i { color: var(--ft-primary); font-size: 1.8rem; }
+.sales-history-empty h3 { margin: 0.6rem 0 0.25rem; color: var(--ft-text); font-size: 1rem; font-weight: 700; }
+.sales-history-empty p { margin: 0; font-size: 0.88rem; }
+
+@media (max-width: 991.98px) {
+    .sales-history-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sales-history-filter-search { grid-column: 1 / -1; }
+    .sales-history-export { grid-column: 1 / -1; }
+}
 
 @keyframes receipt-print-pulse {
     from { transform: translateY(0); }
@@ -468,6 +500,13 @@ footer.footer { color: var(--ft-muted); border-top: 1px solid var(--ft-border) !
     .receipt-meta { grid-template-columns: 1fr; }
     .receipt-page-actions { flex-direction: column; }
     .receipt-page-actions .btn { width: 100%; }
+    .sales-history-header { flex-direction: column; }
+    .sales-history-header > .btn { width: 100%; }
+    .sales-history-filters { grid-template-columns: 1fr; }
+    .sales-history-filter-search,
+    .sales-history-export { grid-column: auto; }
+    .sales-history-filter-actions { display: grid; grid-template-columns: 1fr 1fr; }
+    .sales-history-export .btn { width: 100%; }
 }
 
 /* ---- POS line-item table ---- */

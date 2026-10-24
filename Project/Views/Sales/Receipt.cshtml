@@ -1,7 +1,8 @@
 @model FabriTrack.Models.Sale
 @{
     ViewData["Title"] = "Receipt #" + Model.SaleId;
-    var autoPrint = ViewBag.AutoPrint as bool? == true;
+    var requestedAutoPrint = ViewBag.AutoPrint as bool? == true;
+    var autoPrint = !Model.IsVoided && requestedAutoPrint;
 }
 
 <div class="receipt-page">
@@ -19,6 +20,15 @@
                 <strong>#@Model.SaleId</strong>
             </div>
         </header>
+
+        @if (Model.IsVoided)
+        {
+            <div class="receipt-void-banner">
+                <strong>VOIDED — NOT A VALID SALES RECEIPT</strong>
+                <span>Voided @Model.VoidedAt?.ToString("MMM d, yyyy h:mm tt")</span>
+                <span>Reason: @Model.VoidReason</span>
+            </div>
+        }
 
         <div class="receipt-meta">
             <div>
@@ -63,7 +73,10 @@
             <strong>₱@Model.TotalAmount.ToString("N2")</strong>
         </div>
 
-        <div class="receipt-thank-you">Thank you for your purchase.</div>
+        @if (!Model.IsVoided)
+        {
+            <div class="receipt-thank-you">Thank you for your purchase.</div>
+        }
     </div>
 
     <div id="receiptPrintStatus" class="receipt-print-status" role="status" aria-live="polite" hidden>
@@ -74,7 +87,10 @@
     <div class="receipt-page-actions">
         <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Sales history</a>
         <a asp-action="Create" class="btn btn-outline-primary"><i class="bi bi-cart-plus me-1"></i>New sale</a>
-        <button id="printReceiptButton" type="button" class="btn btn-primary"><i class="bi bi-printer me-1"></i>Print receipt</button>
+        @if (!Model.IsVoided)
+        {
+            <button id="printReceiptButton" type="button" class="btn btn-primary"><i class="bi bi-printer me-1"></i>Print receipt</button>
+        }
     </div>
     <p class="receipt-print-note">Your browser will open its print dialog. Select a printer or choose Save as PDF.</p>
 </div>
@@ -96,7 +112,8 @@
                 window.setTimeout(() => window.print(), 1100);
             }
 
-            document.getElementById('printReceiptButton').addEventListener('click', preparePrint);
+            const printButton = document.getElementById('printReceiptButton');
+            if (printButton) printButton.addEventListener('click', preparePrint);
             window.addEventListener('afterprint', () => {
                 if (!printQueued) return;
                 status.classList.remove('is-printing');

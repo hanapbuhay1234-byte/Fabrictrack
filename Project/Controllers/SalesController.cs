@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Text;
 
 namespace FabriTrack.Controllers
 {
@@ -29,15 +31,206 @@ namespace FabriTrack.Controllers
                 .Include(s => s.SaleItems).ThenInclude(si => si.Fabric)
                 .FirstOrDefaultAsync(s => s.SaleId == id);
             if (sale == null) return NotFound();
-            ViewBag.AutoPrint = TempData["AutoPrintReceiptId"] is int receiptId && receiptId == id;
+            var autoPrintReceiptId = TempData["AutoPrintReceiptId"] is int receiptId ? receiptId : (int?)null;
+            ViewBag.AutoPrint = !sale.IsVoided && autoPrintReceiptId == id;
             return View(sale);
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(
+            string? search,
+            DateTime? startDate,
+            DateTime? endDate,
+            int? customerId,
+            int page = 1)
         {
-            var sales = await _context.Sales.Include(s => s.Customer).Include(s => s.SaleItems)
-                .OrderByDescending(s => s.SaleDate).ToListAsync();
-            return View(sales);
+            var model = new SalesHistoryViewModel
+            {
+                Search = search?.Trim(),
+                StartDate = startDate?.Date,
+                EndDate = endDate?.Date,
+                CustomerId = customerId,
+                Page = Math.Max(1, page)
+            };
+            await PopulateSalesHistoryCustomersAsync(model);
+
+            if (startDate.HasValue && endDate.HasValue && startDate.Value.Date > endDate.Value.Date)
+            {
+                ModelState.AddModelError(nameof(model.EndDate), "The end date must be on or after the start date.");
+                return View(model);
+            }
+
+            var query = FilterSalesHistory(_context.Sales.AsNoTracking(), model.Search, model.StartDate, model.EndDate, customerId);
+            var completedSales = query.Where(sale => !sale.IsVoided);
+            model.TotalRecords = await query.CountAsync();
+            model.CompletedSales = await completedSales.CountAsync();
+            model.VoidedSales = await query.CountAsync(sale => sale.IsVoided);
+            model.CompletedRevenue = await completedSales.SumAsync(sale => (decimal?)sale.TotalAmount) ?? 0m;
+
+            model.Page = Math.Min(model.Page, model.TotalPages);
+            model.Sales = await query
+                .OrderByDescending(sale => sale.SaleDate)
+                .ThenByDescending(sale => sale.SaleId)
+                .Skip((model.Page - 1) * model.PageSize)
+                .Take(model.PageSize)
+                .Select(sale => new SalesHistoryRowViewModel
+                {
+                    SaleId = sale.SaleId,
+                    SaleDate = sale.SaleDate,
+                    CustomerName = sale.Customer == null ? "Walk-in" : sale.Customer.FullName,
+                    ItemCount = sale.SaleItems.Count,
+                    TotalAmount = sale.TotalAmount,
+                    IsVoided = sale.IsVoided
+                })
+                .ToListAsync();
+
+            return View(model);
+        }
+
+        public async Task<IActionResult> Export(
+            string? search,
+            DateTime? startDate,
+            DateTime? endDate,
+            int? customerId)
+        {
+            if (startDate.HasValue && endDate.HasValue && startDate.Value.Date > endDate.Value.Date)
+            {
+                TempData["Error"] = "The end date must be on or after the start date.";
+                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId });
+            }
+
+            var query = FilterSalesHistory(
+                _context.Sales.AsNoTracking(),
+                search?.Trim(),
+                startDate?.Date,
+                endDate?.Date,
+                customerId);
+            var sales = await query
+                .OrderByDescending(sale => sale.SaleDate)
+                .ThenByDescending(sale => sale.SaleId)
+                .Select(sale => new
+                {
+                    sale.SaleId,
+                    sale.SaleDate,
+                    CustomerName = sale.Customer == null ? "Walk-in" : sale.Customer.FullName,
+                    ItemCount = sale.SaleItems.Count,
+                    sale.TotalAmount,
+                    Status = sale.IsVoided ? "Voided" : "Completed"
+                })
+                .ToListAsync();
+
+            var csv = new StringBuilder();
+            csv.AppendLine("Sale ID,Date,Customer,Items,Total (PHP),Status");
+            foreach (var sale in sales)
+            {
+                csv.Append(sale.SaleId.ToString(CultureInfo.InvariantCulture)).Append(',')
+                    .Append(CsvField(sale.SaleDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))).Append(',')
+                    .Append(CsvField(sale.CustomerName)).Append(',')
+                    .Append(sale.ItemCount.ToString(CultureInfo.InvariantCulture)).Append(',')
+                    .Append(sale.TotalAmount.ToString("0.00", CultureInfo.InvariantCulture)).Append(',')
+                    .Append(CsvField(sale.Status)).AppendLine();
+            }
+
+            return File(
+                new UTF8Encoding(true).GetBytes(csv.ToString()),
+                "text/csv; charset=utf-8",
+                $"sales-history-{DateTime.Now:yyyyMMdd-HHmmss}.csv");
+        }
+
+        [HttpPost, ValidateAntiForgeryToken, Authorize(Roles = Roles.Admin)]
+        public async Task<IActionResult> Void(
+            int id,
+            string? reason,
+            string? search,
+            DateTime? startDate,
+            DateTime? endDate,
+            int? customerId,
+            int page = 1)
+        {
+            var trimmedReason = reason?.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedReason) || trimmedReason.Length > 200)
+            {
+                TempData["Error"] = "Enter a reason for voiding the sale (up to 200 characters).";
+                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var sale = await _context.Sales
+                    .Include(item => item.SaleItems)
+                    .ThenInclude(item => item.Fabric)
+                    .FirstOrDefaultAsync(item => item.SaleId == id);
+                if (sale == null)
+                {
+                    await transaction.RollbackAsync();
+                    return NotFound();
+                }
+
+                if (sale.IsVoided)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = $"Sale #{sale.SaleId} has already been voided.";
+                    return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+                }
+
+                var itemsByFabric = sale.SaleItems
+                    .GroupBy(saleItem => saleItem.FabricId)
+                    .Select(group => new
+                    {
+                        Fabric = group.First().Fabric,
+                        ProductName = group.First().ProductName,
+                        Quantity = group.Sum(saleItem => saleItem.Quantity)
+                    })
+                    .ToList();
+                foreach (var item in itemsByFabric)
+                {
+                    var fabric = item.Fabric;
+                    if (fabric == null || fabric.StockQuantity > 99999999.99m - item.Quantity)
+                    {
+                        await transaction.RollbackAsync();
+                        TempData["Error"] = $"Stock for '{item.ProductName}' cannot be restored within the allowed quantity range. No changes were made.";
+                        return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+                    }
+                }
+
+                sale.IsVoided = true;
+                sale.PaymentStatus = "Voided";
+                sale.VoidedAt = DateTime.Now;
+                sale.VoidedByUserId = _userManager.GetUserId(User);
+                sale.VoidReason = trimmedReason;
+
+                foreach (var item in itemsByFabric)
+                {
+                    var fabric = item.Fabric!;
+                    fabric.StockQuantity += item.Quantity;
+                    _context.InventoryMovements.Add(new InventoryMovement
+                    {
+                        FabricId = fabric.FabricId,
+                        SaleId = sale.SaleId,
+                        MovementType = "Sale Void",
+                        QuantityChange = item.Quantity,
+                        Notes = $"Sale #{sale.SaleId} voided: {trimmedReason}",
+                        UserId = sale.VoidedByUserId
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["Success"] = $"Sale #{sale.SaleId} voided and inventory restored.";
+                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Sale or inventory changed while the void was being processed. Refresh Sales History and try again; no partial changes were saved.";
+                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<IActionResult> Details(int id)
@@ -195,6 +388,70 @@ namespace FabriTrack.Controllers
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private static IQueryable<Sale> FilterSalesHistory(
+            IQueryable<Sale> query,
+            string? search,
+            DateTime? startDate,
+            DateTime? endDate,
+            int? customerId)
+        {
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchTerm = search.Trim();
+                var hasSaleId = int.TryParse(searchTerm, out var saleId);
+                query = query.Where(sale =>
+                    (hasSaleId && sale.SaleId == saleId) ||
+                    (sale.Customer != null && sale.Customer.FullName.Contains(searchTerm)) ||
+                    sale.SaleItems.Any(item =>
+                        item.ProductName.Contains(searchTerm) ||
+                        item.ProductSku.Contains(searchTerm)));
+            }
+
+            if (startDate.HasValue)
+                query = query.Where(sale => sale.SaleDate >= startDate.Value.Date);
+
+            if (endDate.HasValue)
+            {
+                var endExclusive = endDate.Value.Date.AddDays(1);
+                query = query.Where(sale => sale.SaleDate < endExclusive);
+            }
+
+            if (customerId == 0)
+                query = query.Where(sale => sale.CustomerId == null);
+            else if (customerId.HasValue)
+                query = query.Where(sale => sale.CustomerId == customerId.Value);
+
+            return query;
+        }
+
+        private async Task PopulateSalesHistoryCustomersAsync(SalesHistoryViewModel model)
+        {
+            model.Customers = await _context.Customers
+                .AsNoTracking()
+                .OrderBy(customer => customer.FullName)
+                .Select(customer => new SelectListItem
+                {
+                    Value = customer.CustomerId.ToString(),
+                    Text = customer.FullName,
+                    Selected = model.CustomerId == customer.CustomerId
+                })
+                .ToListAsync();
+        }
+
+        private static string CsvField(string value)
+        {
+            var trimmedValue = value.TrimStart();
+            var safeValue = trimmedValue.StartsWith('=') ||
+                trimmedValue.StartsWith('+') ||
+                trimmedValue.StartsWith('-') ||
+                trimmedValue.StartsWith('@') ||
+                value.StartsWith('\t') ||
+                value.StartsWith('\r')
+                ? "'" + value
+                : value;
+            return $"\"{safeValue.Replace("\"", "\"\"")}\"";
         }
 
         private async Task<IActionResult> RedisplayCreateFormAsync(

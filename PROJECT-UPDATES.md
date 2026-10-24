@@ -28,6 +28,11 @@ This file tracks the features and project changes implemented during the current
 - Added a receipt-style final order review modal before checkout, with an explicit confirmation step; inventory and current prices are still verified server-side when the confirmed sale is recorded.
 - Kept checkout idle while the cashier backs out of the final review; only explicit confirmation starts the submitting state, and closing the review restores the checkout controls.
 - Standardized completed sales and Sales History receipt links on a polished official receipt screen. Successful checkouts animate a brief print-preparation state before opening the browser print dialog; older receipts remain manual-print only.
+- Rebuilt Sales History around server-side search, date and customer filters, stable 20-row paging, and filtered-period completed-sale/revenue summaries; voided records remain visible but are excluded from completed revenue.
+- Added CSV export for all transactions matching the active filters, including void status, independently of the current page.
+- Added an admin-only, reason-required audited sale-void action. Voids are retained in history, record who/when/why, restore inventory transactionally with compensating stock movements, and are protected against duplicate concurrent voiding. Voided receipts are clearly marked and cannot be printed as valid sales receipts.
+- Excluded voided transactions from Dashboard, Sales Analytics, and customer purchase history so void reversals do not inflate sales counts, revenue, or product performance.
+- Added migration `20261024082501_AddAuditedSaleVoiding` for the void audit fields. Apply it with `dotnet ef database update --project .\Project\Project.csproj` before using the void feature.
 - Preserved optional customer selection and server-side checkout pricing/stock validation.
 - Added server-side quantity validation, duplicate-fabric aggregation, and cart restoration when validation fails.
 - Files: `Project\Controllers\SalesController.cs`, `Project\Views\Sales\Create.cshtml`, `Project\wwwroot\css\site.css`

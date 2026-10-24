@@ -1,40 +1,255 @@
-@model IEnumerable<FabriTrack.Models.Sale>
+@model FabriTrack.Models.SalesHistoryViewModel
 @{
     ViewData["Title"] = "Sales History";
+    var isAdmin = User.IsInRole(FabriTrack.Models.Roles.Admin);
 }
 
-<div class="page-header">
-    <h2><i class="bi bi-receipt me-2"></i>Sales history</h2>
+<div class="page-header sales-history-header">
+    <div>
+        <h2><i class="bi bi-receipt me-2"></i>Sales history</h2>
+        <p class="text-muted mb-0">Find transactions, review receipts, and export filtered records.</p>
+    </div>
     <a class="btn btn-primary" asp-action="Create"><i class="bi bi-cart-plus me-1"></i>New sale</a>
 </div>
 
-@if (!Model.Any())
+<div class="row g-3 mb-4 sales-history-summary">
+    <div class="col-sm-4">
+        <section class="stat-card">
+            <div class="stat-chip primary"><i class="bi bi-check2-circle"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Completed sales</div>
+                <div class="stat-value">@Model.CompletedSales</div>
+                <div class="stat-secondary">For the selected filters</div>
+            </div>
+        </section>
+    </div>
+    <div class="col-sm-4">
+        <section class="stat-card">
+            <div class="stat-chip primary"><i class="bi bi-cash-stack"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Completed revenue</div>
+                <div class="stat-value">₱@Model.CompletedRevenue.ToString("N2")</div>
+                <div class="stat-secondary">Voided sales excluded</div>
+            </div>
+        </section>
+    </div>
+    <div class="col-sm-4">
+        <section class="stat-card">
+            <div class="stat-chip primary"><i class="bi bi-arrow-counterclockwise"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Voided sales</div>
+                <div class="stat-value">@Model.VoidedSales</div>
+                <div class="stat-secondary">Retained for audit history</div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<section class="sales-history-panel">
+    <form method="get" asp-action="Index" class="sales-history-filters">
+        <div class="sales-history-filter-search">
+            <label for="search" class="form-label">Search</label>
+            <input id="search" name="search" value="@Model.Search" class="form-control" type="search" placeholder="Sale #, customer, product, or SKU" />
+        </div>
+        <div>
+            <label for="startDate" class="form-label">From</label>
+            <input id="startDate" name="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")" class="form-control" type="date" />
+        </div>
+        <div>
+            <label for="endDate" class="form-label">To</label>
+            <input id="endDate" name="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")" class="form-control" type="date" />
+        </div>
+        <div>
+            <label for="customerId" class="form-label">Customer</label>
+            <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select">
+                <option value="">All customers</option>
+                <option value="0" selected="@(Model.CustomerId == 0 ? "selected" : null)">Walk-in customers</option>
+            </select>
+        </div>
+        <div class="sales-history-filter-actions">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply filters</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+        </div>
+        <div class="sales-history-export">
+            <a asp-action="Export"
+               asp-route-search="@Model.Search"
+               asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+               asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+               asp-route-customerId="@Model.CustomerId"
+               class="btn btn-outline-primary">
+                <i class="bi bi-download me-1"></i>Export transactions
+            </a>
+        </div>
+    </form>
+
+    <div asp-validation-summary="All" class="alert alert-danger mx-3 mt-3" role="alert"></div>
+
+    <div class="sales-history-table-heading">
+        <div>
+            <h3>Transactions</h3>
+            <span class="text-muted small">@Model.TotalRecords transaction(s) matching the filters</span>
+        </div>
+    </div>
+
+    @if (Model.Sales.Count == 0)
+    {
+        <div class="sales-history-empty">
+            <i class="bi bi-search"></i>
+            <h3>No matching sales</h3>
+            <p>Adjust the search or filters to find transactions.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-container sales-history-table-container">
+            <table class="table table-hover sales-history-table">
+                <thead>
+                    <tr>
+                        <th>Sale</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th class="text-end">Items</th>
+                        <th class="text-end">Total</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sale in Model.Sales)
+                    {
+                        <tr>
+                            <td class="fw-semibold">#@sale.SaleId</td>
+                            <td class="text-nowrap" data-sort-value="@sale.SaleDate.ToString("yyyy-MM-ddTHH:mm")">@sale.SaleDate.ToString("MMM d, yyyy h:mm tt")</td>
+                            <td>@sale.CustomerName</td>
+                            <td class="text-end">@sale.ItemCount</td>
+                            <td class="text-end text-nowrap fw-semibold">₱@sale.TotalAmount.ToString("N2")</td>
+                            <td>
+                                @if (sale.IsVoided)
+                                {
+                                    <span class="badge text-bg-danger">Voided</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-success">Completed</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-primary"
+                                   asp-action="Details"
+                                   asp-route-id="@sale.SaleId"
+                                   aria-label="View receipt for sale @sale.SaleId">
+                                    <i class="bi bi-receipt me-1"></i>Receipt
+                                </a>
+                                @if (isAdmin && !sale.IsVoided)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger ms-1"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#voidSaleModal"
+                                            data-sale-id="@sale.SaleId">
+                                        <i class="bi bi-x-circle me-1"></i>Void
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <nav class="sales-history-pagination" aria-label="Sales history pages">
+            <span class="text-muted small">Page @Model.Page of @Model.TotalPages</span>
+            <div class="btn-group btn-group-sm">
+                @if (Model.HasPreviousPage)
+                {
+                    <a class="btn btn-outline-secondary"
+                       asp-action="Index"
+                       asp-route-search="@Model.Search"
+                       asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                       asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+                       asp-route-customerId="@Model.CustomerId"
+                       asp-route-page="@(Model.Page - 1)">
+                        <i class="bi bi-chevron-left"></i><span class="visually-hidden">Previous</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="btn btn-outline-secondary disabled" aria-disabled="true">
+                        <i class="bi bi-chevron-left"></i><span class="visually-hidden">Previous</span>
+                    </span>
+                }
+                @if (Model.HasNextPage)
+                {
+                    <a class="btn btn-outline-secondary"
+                       asp-action="Index"
+                       asp-route-search="@Model.Search"
+                       asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                       asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+                       asp-route-customerId="@Model.CustomerId"
+                       asp-route-page="@(Model.Page + 1)">
+                        <i class="bi bi-chevron-right"></i><span class="visually-hidden">Next</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="btn btn-outline-secondary disabled" aria-disabled="true">
+                        <i class="bi bi-chevron-right"></i><span class="visually-hidden">Next</span>
+                    </span>
+                }
+            </div>
+        </nav>
+    }
+</section>
+
+@if (isAdmin)
 {
-    <div class="empty-state text-center py-5">
-        <i class="bi bi-inbox display-6 d-block mb-2"></i>
-        <h5 class="mb-2">No sales recorded yet</h5>
-        <p class="text-muted mb-3">Record your first sale to see transactions here.</p>
-        <a asp-action="Create" class="btn btn-primary">New sale</a>
+    <div class="modal fade" id="voidSaleModal" tabindex="-1" aria-labelledby="voidSaleTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form asp-action="Void" method="post">
+                    <input type="hidden" name="id" id="voidSaleId" />
+                    <input type="hidden" name="search" value="@Model.Search" />
+                    <input type="hidden" name="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="customerId" value="@Model.CustomerId" />
+                    <input type="hidden" name="page" value="@Model.Page" />
+                    <div class="modal-header">
+                        <div>
+                            <div class="small text-uppercase text-danger fw-semibold">Audited inventory action</div>
+                            <h2 class="modal-title fs-5" id="voidSaleTitle">Void sale <span id="voidSaleLabel"></span>?</h2>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            This marks the sale as void, restores its sold quantities to inventory, and records compensating stock movements. The original transaction will remain in Sales History.
+                        </div>
+                        <label for="voidReason" class="form-label">Reason for voiding</label>
+                        <textarea id="voidReason" name="reason" class="form-control" rows="3" maxlength="200" required></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Keep sale</button>
+                        <button type="submit" class="btn btn-danger"><i class="bi bi-x-circle me-1"></i>Void and restore stock</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 }
-else
-{
-    <div class="table-container">
-        <table class="table table-hover data-table" data-page-size="10">
-            <thead><tr><th data-sort>#</th><th data-sort>Date</th><th data-sort>Customer</th><th data-sort>Items</th><th data-sort>Total</th><th></th></tr></thead>
-            <tbody>
-            @foreach (var s in Model)
-            {
-                <tr>
-                    <td>@s.SaleId</td>
-                    <td data-sort-value="@s.SaleDate.ToString("yyyy-MM-ddTHH:mm")">@s.SaleDate.ToString("MMM d, yyyy h:mm tt")</td>
-                    <td>@(s.Customer?.FullName ?? "Walk-in")</td>
-                    <td><!-- keep count unformatted on index -->@s.SaleItems.Count item(s)</td>
-                    <td>₱@s.TotalAmount.ToString("N2")</td>
-                    <td><a class="btn btn-sm btn-outline-info" asp-action="Details" asp-route-id="@s.SaleId"><i class="bi bi-receipt me-1"></i>View receipt</a></td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const modal = document.getElementById('voidSaleModal');
+            if (!modal) return;
+            modal.addEventListener('show.bs.modal', event => {
+                const button = event.relatedTarget;
+                const saleId = button?.dataset.saleId;
+                if (!saleId) return;
+                document.getElementById('voidSaleId').value = saleId;
+                document.getElementById('voidSaleLabel').textContent = `#${saleId}`;
+                document.getElementById('voidReason').value = '';
+            });
+        })();
+    </script>
 }

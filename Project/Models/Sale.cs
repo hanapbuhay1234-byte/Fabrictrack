@@ -21,6 +21,16 @@ namespace FabriTrack.Models
         [StringLength(20)]
         public string PaymentStatus { get; set; } = "Paid";
 
+        public bool IsVoided { get; set; }
+
+        public DateTime? VoidedAt { get; set; }
+
+        [StringLength(450)]
+        public string? VoidedByUserId { get; set; }
+
+        [StringLength(200)]
+        public string? VoidReason { get; set; }
+
         public ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
     }
 

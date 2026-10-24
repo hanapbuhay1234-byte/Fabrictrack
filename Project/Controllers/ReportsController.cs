@@ -41,9 +41,9 @@ namespace FabriTrack.Controllers
             var previousPeriodLength = periodEnd - periodStart;
             var previousPeriodStart = periodStart - previousPeriodLength;
             var currentSales = _context.Sales
-                .Where(sale => sale.SaleDate >= periodStart && sale.SaleDate < periodEnd);
+                .Where(sale => !sale.IsVoided && sale.SaleDate >= periodStart && sale.SaleDate < periodEnd);
             var previousSales = _context.Sales
-                .Where(sale => sale.SaleDate >= previousPeriodStart && sale.SaleDate < periodStart);
+                .Where(sale => !sale.IsVoided && sale.SaleDate >= previousPeriodStart && sale.SaleDate < periodStart);
 
             model.SalesRevenue = await currentSales.SumAsync(sale => (decimal?)sale.TotalAmount) ?? 0;
             model.PreviousSalesRevenue = await previousSales.SumAsync(sale => (decimal?)sale.TotalAmount) ?? 0;
@@ -76,7 +76,7 @@ namespace FabriTrack.Controllers
             model.TrendGranularity = trendGranularity;
 
             model.CategoryBreakdown = await _context.SaleItems
-                .Where(item => item.Sale != null &&
+                .Where(item => item.Sale != null && !item.Sale.IsVoided &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
                 .GroupBy(item => item.CategoryName)
@@ -90,7 +90,7 @@ namespace FabriTrack.Controllers
                 .ToListAsync();
 
             model.FabricBreakdown = await _context.SaleItems
-                .Where(item => item.Sale != null &&
+                .Where(item => item.Sale != null && !item.Sale.IsVoided &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
                 .GroupBy(item => new { item.ProductSku, item.ProductName, item.Color, item.Unit })
@@ -119,9 +119,9 @@ namespace FabriTrack.Controllers
             var previousPeriodLength = periodEnd - periodStart;
             var previousPeriodStart = periodStart - previousPeriodLength;
             var currentSales = _context.Sales
-                .Where(sale => sale.SaleDate >= periodStart && sale.SaleDate < periodEnd);
+                .Where(sale => !sale.IsVoided && sale.SaleDate >= periodStart && sale.SaleDate < periodEnd);
             var previousSales = _context.Sales
-                .Where(sale => sale.SaleDate >= previousPeriodStart && sale.SaleDate < periodStart);
+                .Where(sale => !sale.IsVoided && sale.SaleDate >= previousPeriodStart && sale.SaleDate < periodStart);
             var salesRevenue = await currentSales.SumAsync(sale => (decimal?)sale.TotalAmount) ?? 0;
             var previousSalesRevenue = await previousSales.SumAsync(sale => (decimal?)sale.TotalAmount) ?? 0;
             var orderCount = await currentSales.CountAsync();
@@ -130,7 +130,7 @@ namespace FabriTrack.Controllers
             var previousAverageOrderValue = previousOrderCount == 0 ? 0 : previousSalesRevenue / previousOrderCount;
 
             var categories = await _context.SaleItems
-                .Where(item => item.Sale != null &&
+                .Where(item => item.Sale != null && !item.Sale.IsVoided &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
                 .GroupBy(item => item.CategoryName)
@@ -144,7 +144,7 @@ namespace FabriTrack.Controllers
                 .ToListAsync();
 
             var fabrics = await _context.SaleItems
-                .Where(item => item.Sale != null &&
+                .Where(item => item.Sale != null && !item.Sale.IsVoided &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
                 .GroupBy(item => new { item.ProductSku, item.ProductName, item.Color, item.Unit })

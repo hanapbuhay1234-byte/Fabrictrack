@@ -39,6 +39,10 @@ namespace FabriTrack.Data
                 .HasForeignKey(s => s.CustomerId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            builder.Entity<Sale>()
+                .Property(sale => sale.IsVoided)
+                .IsConcurrencyToken();
+
             builder.Entity<SaleItem>()
                 .HasOne(si => si.Sale)
                 .WithMany(s => s.SaleItems)

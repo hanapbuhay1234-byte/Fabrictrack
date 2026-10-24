@@ -29,9 +29,9 @@ namespace FabriTrack.Controllers
             var previousPeriodStart = periodStart.AddDays(-periodDays);
 
             var currentSales = _context.Sales
-                .Where(sale => sale.SaleDate >= periodStart && sale.SaleDate < periodEnd);
+                .Where(sale => !sale.IsVoided && sale.SaleDate >= periodStart && sale.SaleDate < periodEnd);
             var previousSales = _context.Sales
-                .Where(sale => sale.SaleDate >= previousPeriodStart && sale.SaleDate < periodStart);
+                .Where(sale => !sale.IsVoided && sale.SaleDate >= previousPeriodStart && sale.SaleDate < periodStart);
 
             var model = new DashboardViewModel
             {
@@ -75,7 +75,7 @@ namespace FabriTrack.Controllers
                 .ToList();
 
             model.TopFabrics = await _context.SaleItems
-                .Where(item => item.Sale != null &&
+                .Where(item => item.Sale != null && !item.Sale.IsVoided &&
                     item.Sale.SaleDate >= periodStart &&
                     item.Sale.SaleDate < periodEnd)
                 .GroupBy(item => new { item.ProductSku, item.ProductName, item.Color, item.Unit })
@@ -107,6 +107,7 @@ namespace FabriTrack.Controllers
                 .ToListAsync();
 
             model.RecentSales = await _context.Sales
+                .Where(sale => !sale.IsVoided)
                 .Include(s => s.Customer)
                 .Include(s => s.SaleItems)
                 .OrderByDescending(s => s.SaleDate)
