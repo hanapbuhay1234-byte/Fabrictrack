@@ -41,6 +41,7 @@ namespace FabriTrack.Controllers
             DateTime? startDate,
             DateTime? endDate,
             int? customerId,
+            string? cashierId,
             int page = 1)
         {
             var model = new SalesHistoryViewModel
@@ -49,9 +50,11 @@ namespace FabriTrack.Controllers
                 StartDate = startDate?.Date,
                 EndDate = endDate?.Date,
                 CustomerId = customerId,
+                CashierId = cashierId,
                 Page = Math.Max(1, page)
             };
             await PopulateSalesHistoryCustomersAsync(model);
+            await PopulateSalesHistoryCashiersAsync(model);
 
             if (startDate.HasValue && endDate.HasValue && startDate.Value.Date > endDate.Value.Date)
             {
@@ -59,7 +62,13 @@ namespace FabriTrack.Controllers
                 return View(model);
             }
 
-            var query = FilterSalesHistory(_context.Sales.AsNoTracking(), model.Search, model.StartDate, model.EndDate, customerId);
+            var query = FilterSalesHistory(
+                _context.Sales.AsNoTracking(),
+                model.Search,
+                model.StartDate,
+                model.EndDate,
+                customerId,
+                model.CashierId);
             var completedSales = query.Where(sale => !sale.IsVoided);
             model.TotalRecords = await query.CountAsync();
             model.CompletedSales = await completedSales.CountAsync();
@@ -77,6 +86,7 @@ namespace FabriTrack.Controllers
                     SaleId = sale.SaleId,
                     SaleDate = sale.SaleDate,
                     CustomerName = sale.Customer == null ? "Walk-in" : sale.Customer.FullName,
+                    CashierName = sale.CashierName ?? "Unknown",
                     ItemCount = sale.SaleItems.Count,
                     TotalAmount = sale.TotalAmount,
                     IsVoided = sale.IsVoided
@@ -90,12 +100,13 @@ namespace FabriTrack.Controllers
             string? search,
             DateTime? startDate,
             DateTime? endDate,
-            int? customerId)
+            int? customerId,
+            string? cashierId)
         {
             if (startDate.HasValue && endDate.HasValue && startDate.Value.Date > endDate.Value.Date)
             {
                 TempData["Error"] = "The end date must be on or after the start date.";
-                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId });
+                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, cashierId });
             }
 
             var query = FilterSalesHistory(
@@ -103,7 +114,8 @@ namespace FabriTrack.Controllers
                 search?.Trim(),
                 startDate?.Date,
                 endDate?.Date,
-                customerId);
+                customerId,
+                cashierId);
             var sales = await query
                 .OrderByDescending(sale => sale.SaleDate)
                 .ThenByDescending(sale => sale.SaleId)
@@ -112,6 +124,7 @@ namespace FabriTrack.Controllers
                     sale.SaleId,
                     sale.SaleDate,
                     CustomerName = sale.Customer == null ? "Walk-in" : sale.Customer.FullName,
+                    CashierName = sale.CashierName ?? "Unknown",
                     ItemCount = sale.SaleItems.Count,
                     sale.TotalAmount,
                     Status = sale.IsVoided ? "Voided" : "Completed"
@@ -119,12 +132,13 @@ namespace FabriTrack.Controllers
                 .ToListAsync();
 
             var csv = new StringBuilder();
-            csv.AppendLine("Sale ID,Date,Customer,Items,Total (PHP),Status");
+            csv.AppendLine("Sale ID,Date,Customer,Processed by,Items,Total (PHP),Status");
             foreach (var sale in sales)
             {
                 csv.Append(sale.SaleId.ToString(CultureInfo.InvariantCulture)).Append(',')
                     .Append(CsvField(sale.SaleDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))).Append(',')
                     .Append(CsvField(sale.CustomerName)).Append(',')
+                    .Append(CsvField(sale.CashierName)).Append(',')
                     .Append(sale.ItemCount.ToString(CultureInfo.InvariantCulture)).Append(',')
                     .Append(sale.TotalAmount.ToString("0.00", CultureInfo.InvariantCulture)).Append(',')
                     .Append(CsvField(sale.Status)).AppendLine();
@@ -144,13 +158,14 @@ namespace FabriTrack.Controllers
             DateTime? startDate,
             DateTime? endDate,
             int? customerId,
+            string? cashierId,
             int page = 1)
         {
             var trimmedReason = reason?.Trim();
             if (string.IsNullOrWhiteSpace(trimmedReason) || trimmedReason.Length > 200)
             {
                 TempData["Error"] = "Enter a reason for voiding the sale (up to 200 characters).";
-                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, cashierId, page });
             }
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -170,7 +185,7 @@ namespace FabriTrack.Controllers
                 {
                     await transaction.RollbackAsync();
                     TempData["Error"] = $"Sale #{sale.SaleId} has already been voided.";
-                    return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+                    return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, cashierId, page });
                 }
 
                 var itemsByFabric = sale.SaleItems
@@ -189,7 +204,7 @@ namespace FabriTrack.Controllers
                     {
                         await transaction.RollbackAsync();
                         TempData["Error"] = $"Stock for '{item.ProductName}' cannot be restored within the allowed quantity range. No changes were made.";
-                        return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+                        return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, cashierId, page });
                     }
                 }
 
@@ -218,13 +233,13 @@ namespace FabriTrack.Controllers
                 await transaction.CommitAsync();
 
                 TempData["Success"] = $"Sale #{sale.SaleId} voided and inventory restored.";
-                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, cashierId, page });
             }
             catch (DbUpdateConcurrencyException)
             {
                 await transaction.RollbackAsync();
                 TempData["Error"] = "Sale or inventory changed while the void was being processed. Refresh Sales History and try again; no partial changes were saved.";
-                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, page });
+                return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, cashierId, page });
             }
             catch
             {
@@ -308,13 +323,18 @@ namespace FabriTrack.Controllers
                 .GroupBy(index => fabricIds[index])
                 .ToDictionary(group => group.Key, group => group.Sum(index => quantities[index]));
 
+            var cashier = await _userManager.GetUserAsync(User);
+            if (cashier == null)
+                return Challenge();
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 var sale = new Sale
                 {
                     CustomerId = customerId,
-                    CashierId = _userManager.GetUserId(User),
+                    CashierId = cashier.Id,
+                    CashierName = cashier.FullName,
                     SaleDate = DateTime.Now
                 };
                 _context.Sales.Add(sale);
@@ -395,7 +415,8 @@ namespace FabriTrack.Controllers
             string? search,
             DateTime? startDate,
             DateTime? endDate,
-            int? customerId)
+            int? customerId,
+            string? cashierId)
         {
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -404,6 +425,7 @@ namespace FabriTrack.Controllers
                 query = query.Where(sale =>
                     (hasSaleId && sale.SaleId == saleId) ||
                     (sale.Customer != null && sale.Customer.FullName.Contains(searchTerm)) ||
+                    (sale.CashierName != null && sale.CashierName.Contains(searchTerm)) ||
                     sale.SaleItems.Any(item =>
                         item.ProductName.Contains(searchTerm) ||
                         item.ProductSku.Contains(searchTerm)));
@@ -423,6 +445,9 @@ namespace FabriTrack.Controllers
             else if (customerId.HasValue)
                 query = query.Where(sale => sale.CustomerId == customerId.Value);
 
+            if (!string.IsNullOrWhiteSpace(cashierId))
+                query = query.Where(sale => sale.CashierId == cashierId);
+
             return query;
         }
 
@@ -438,6 +463,40 @@ namespace FabriTrack.Controllers
                     Selected = model.CustomerId == customer.CustomerId
                 })
                 .ToListAsync();
+        }
+
+        private async Task PopulateSalesHistoryCashiersAsync(SalesHistoryViewModel model)
+        {
+            var cashierIds = await _context.Sales
+                .AsNoTracking()
+                .Where(sale => sale.CashierId != null)
+                .Select(sale => sale.CashierId!)
+                .Distinct()
+                .ToListAsync();
+
+            var cashiers = await _context.Users
+                .AsNoTracking()
+                .Where(user => cashierIds.Contains(user.Id))
+                .OrderBy(user => user.FullName)
+                .Select(user => new
+                {
+                    user.Id,
+                    user.FullName,
+                    user.Email,
+                    user.UserName
+                })
+                .ToListAsync();
+
+            model.Cashiers = cashiers
+                .Select(user => new SelectListItem
+                {
+                    Value = user.Id,
+                    Text = string.IsNullOrWhiteSpace(user.FullName)
+                        ? user.Email ?? user.UserName ?? "Unknown user"
+                        : user.FullName,
+                    Selected = model.CashierId == user.Id
+                })
+                .ToList();
         }
 
         private static string CsvField(string value)

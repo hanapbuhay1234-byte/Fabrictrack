@@ -67,7 +67,7 @@ Open `Project\appsettings.json` and set **your own** MySQL password:
 
 ## 5. Apply application updates to the imported database
 
-The checked-in SQL dump contains the existing schema and migration history. After importing it, back up the database, then apply any newer application migrations. The current application includes migrations for Product Inventory, audited sale voiding, staff account activation and first-login password changes, user profile photos, and centralized audit logs. Applying migrations is required before starting the updated application:
+The checked-in SQL dump contains the existing schema and migration history. After importing it, back up the database, then apply any newer application migrations. The current application includes migrations for Product Inventory, audited sale voiding, staff account activation and first-login password changes, user profile photos, centralized audit logs, and saved sale-processor names. Applying migrations is required before starting the updated application:
 
 ```powershell
 dotnet tool install --global dotnet-ef --version 8.0.0

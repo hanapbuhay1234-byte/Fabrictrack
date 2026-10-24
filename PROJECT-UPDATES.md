@@ -29,10 +29,13 @@ This file tracks the features and project changes implemented during the current
 - Kept checkout idle while the cashier backs out of the final review; only explicit confirmation starts the submitting state, and closing the review restores the checkout controls.
 - Standardized completed sales and Sales History receipt links on a polished official receipt screen. Successful checkouts animate a brief print-preparation state before opening the browser print dialog; older receipts remain manual-print only.
 - Rebuilt Sales History around server-side search, date and customer filters, stable 20-row paging, and filtered-period completed-sale/revenue summaries; voided records remain visible but are excluded from completed revenue.
-- Added CSV export for all transactions matching the active filters, including void status, independently of the current page.
+- Receipts and Sales History now show who processed each sale; Sales History can be filtered by processor, and the filtered CSV export includes the processor.
+- Saved a processor-name snapshot on each sale so receipts retain the original processor name if an account is later renamed; the migration backfills names for existing sales where the user account is available.
+- Added CSV export for all transactions matching the active filters, including processor and void status, independently of the current page.
 - Added an admin-only, reason-required audited sale-void action. Voids are retained in history, record who/when/why, restore inventory transactionally with compensating stock movements, and are protected against duplicate concurrent voiding. Voided receipts are clearly marked and cannot be printed as valid sales receipts.
 - Excluded voided transactions from Dashboard, Sales Analytics, and customer purchase history so void reversals do not inflate sales counts, revenue, or product performance.
 - Added migration `20261024082501_AddAuditedSaleVoiding` for the void audit fields. Apply it with `dotnet ef database update --project .\Project\Project.csproj` before using the void feature.
+- Added migration `20261024222000_AddSaleProcessorSnapshot` to store and backfill the processor name on each sale. Apply migrations before using updated receipts and Sales History.
 
 ### Customers
 

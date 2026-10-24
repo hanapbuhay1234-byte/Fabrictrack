@@ -15,6 +15,9 @@ namespace FabriTrack.Models
         [StringLength(450)]
         public string? CashierId { get; set; }
 
+        [StringLength(256)]
+        public string? CashierName { get; set; }
+
         [Column(TypeName = "decimal(10,2)")]
         public decimal TotalAmount { get; set; }
 

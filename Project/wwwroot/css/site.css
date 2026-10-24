@@ -465,7 +465,7 @@ footer.footer { color: var(--ft-muted); border-top: 1px solid var(--ft-border) !
 .sales-history-summary .stat-chip { width: 46px; height: 46px; font-size: 1.05rem; }
 .sales-history-summary .stat-value { font-size: 1.35rem; }
 .sales-history-summary .stat-secondary { font-size: 0.75rem; }
-.sales-history-filters { display: grid; grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(145px, 1fr)) auto; align-items: end; gap: 0.75rem; padding: 1rem; }
+.sales-history-filters { display: grid; grid-template-columns: minmax(200px, 1.4fr) repeat(4, minmax(125px, 1fr)) auto; align-items: end; gap: 0.75rem; padding: 1rem; }
 .sales-history-filters .form-label { margin-bottom: 0.35rem; color: var(--ft-muted); font-size: 0.78rem; font-weight: 650; }
 .sales-history-filters .form-control,
 .sales-history-filters .form-select { min-height: 40px; }

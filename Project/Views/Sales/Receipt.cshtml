@@ -39,6 +39,10 @@
                 <span class="receipt-meta-label">Customer</span>
                 <strong>@(Model.Customer?.FullName ?? "Walk-in customer")</strong>
             </div>
+            <div>
+                <span class="receipt-meta-label">Processed by</span>
+                <strong>@(string.IsNullOrWhiteSpace(Model.CashierName) ? "Unknown" : Model.CashierName)</strong>
+            </div>
         </div>
 
         <div class="table-responsive">

@@ -337,6 +337,10 @@ namespace Project.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("varchar(450)");
 
+                    b.Property<string>("CashierName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
                     b.Property<int?>("CustomerId")
                         .HasColumnType("int");
 
