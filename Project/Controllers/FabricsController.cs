@@ -83,7 +83,7 @@ namespace FabriTrack.Controllers
             return View(await fabrics.ToListAsync());
         }
 
-        public async Task<IActionResult> Details(int id)
+        public async Task<IActionResult> Details(int id, string? returnTo)
         {
             var fabric = await _context.Fabrics
                 .Include(f => f.Category)
@@ -92,6 +92,7 @@ namespace FabriTrack.Controllers
                 .FirstOrDefaultAsync(f => f.FabricId == id);
             if (fabric == null) return NotFound();
             if (!fabric.IsActive && !User.IsInRole(Roles.Admin)) return NotFound();
+            ViewBag.ReturnToStockAlerts = returnTo == nameof(LowStock);
             return View(fabric);
         }
 
@@ -465,9 +466,10 @@ namespace FabriTrack.Controllers
         public async Task<IActionResult> LowStock()
         {
             var lowStock = await _context.Fabrics.Include(f => f.Category)
+                .Include(f => f.Supplier)
                 .Where(f => f.IsActive && f.StockQuantity <= f.ReorderLevel)
                 .OrderBy(f => f.StockQuantity <= 0 ? 0 : 1)
-                .ThenBy(f => f.StockQuantity)
+                .ThenBy(f => f.ReorderLevel > 0 ? f.StockQuantity / f.ReorderLevel : 2m)
                 .ThenBy(f => f.Name)
                 .ToListAsync();
             return View(lowStock);

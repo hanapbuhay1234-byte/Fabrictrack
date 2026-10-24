@@ -5,10 +5,18 @@
     var isOut = Model.StockQuantity <= 0;
     var isLow = !isOut && Model.StockQuantity <= Model.ReorderLevel;
     var imageUrl = Html.NormalizeImageUrl(Model.ImageUrl);
+    var returnToStockAlerts = ViewBag.ReturnToStockAlerts is true && Model.IsActive;
 }
 
 <div class="inventory-detail-heading">
-    <a asp-action="Index" asp-route-includeArchived="@(!Model.IsActive)" class="inventory-back-link"><i class="bi bi-arrow-left"></i> @(Model.IsActive ? "Product inventory" : "Archived products")</a>
+    @if (returnToStockAlerts)
+    {
+        <a asp-action="LowStock" class="inventory-back-link"><i class="bi bi-arrow-left"></i> Back to stock alerts</a>
+    }
+    else
+    {
+        <a asp-action="Index" asp-route-includeArchived="@(!Model.IsActive)" class="inventory-back-link"><i class="bi bi-arrow-left"></i> @(Model.IsActive ? "Product inventory" : "Archived products")</a>
+    }
     <div class="inventory-detail-heading-row">
         <div>
             <div class="inventory-detail-eyebrow">Product details <span>/</span> @Model.Sku</div>

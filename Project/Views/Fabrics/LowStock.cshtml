@@ -1,46 +1,134 @@
 @model IEnumerable<FabriTrack.Models.Fabric>
 @{
     ViewData["Title"] = "Stock Alerts";
+    var products = Model.ToList();
+    var outOfStockCount = products.Count(product => product.StockQuantity <= 0);
+    var atOrBelowReorderCount = products.Count(product => product.StockQuantity > 0);
+    var missingReorderLevelCount = products.Count(product => product.ReorderLevel <= 0);
 }
 
-<div class="page-header">
+<div class="page-header stock-alert-header">
     <div>
         <h2><i class="bi bi-exclamation-triangle text-warning me-2"></i>Stock alerts</h2>
-        <p class="text-muted mb-0">Active products at or below their individual reorder level.</p>
+        <p class="text-muted mb-0">Prioritized products that need attention based on their individual reorder points.</p>
     </div>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to inventory</a>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-box-seam me-1"></i>Open inventory</a>
 </div>
 
-@if (!Model.Any())
+@if (products.Count == 0)
 {
-    <div class="empty-state text-center py-5">
+    <div class="empty-state stock-alert-empty text-center py-5">
         <i class="bi bi-check-circle display-6 d-block mb-2 text-success"></i>
-        <h5 class="mb-2">All clear</h5>
+        <h5 class="mb-2">All products are above their reorder points</h5>
         <p class="text-muted mb-3">No active products are at or below their reorder level.</p>
-        <a asp-action="Index" class="btn btn-outline-secondary">Open inventory</a>
+        <a asp-action="Index" class="btn btn-primary"><i class="bi bi-box-seam me-1"></i>Review inventory</a>
     </div>
 }
 else
 {
-    <div class="table-container">
-        <table class="table data-table" data-page-size="10">
-            <thead><tr><th data-sort>Product / SKU</th><th data-sort>Category</th><th data-sort>Stock</th><th data-sort>Reorder level</th><th></th></tr></thead>
+    <section class="stock-alert-summary" aria-label="Stock alert summary">
+        <article class="stock-alert-stat">
+            <span class="stock-alert-stat-icon attention"><i class="bi bi-bell"></i></span>
+            <div><small>Needs attention</small><strong>@products.Count</strong></div>
+        </article>
+        <article class="stock-alert-stat">
+            <span class="stock-alert-stat-icon out"><i class="bi bi-exclamation-octagon"></i></span>
+            <div><small>Out of stock</small><strong>@outOfStockCount</strong></div>
+        </article>
+        <article class="stock-alert-stat">
+            <span class="stock-alert-stat-icon low"><i class="bi bi-arrow-down-right"></i></span>
+            <div><small>At/below reorder point</small><strong>@atOrBelowReorderCount</strong></div>
+        </article>
+    </section>
+
+    @if (missingReorderLevelCount > 0)
+    {
+        <div class="alert stock-alert-guidance" role="note">
+            <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+            <span><strong>@missingReorderLevelCount out-of-stock @(missingReorderLevelCount == 1 ? "product has" : "products have") no reorder point.</strong> Edit the product to set a reorder point and calculate a replenishment target.</span>
+            <a asp-action="Index" class="alert-link">Review inventory</a>
+        </div>
+    }
+
+    <div class="table-container stock-alert-table-container">
+        <table class="table data-table stock-alert-table" data-page-size="10">
+            <thead>
+                <tr>
+                    <th data-sort>Product</th>
+                    <th data-sort>Priority</th>
+                    <th data-sort>Supplier</th>
+                    <th>On hand</th>
+                    <th>Reorder point</th>
+                    <th>Suggested to reach target</th>
+                    <th><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
             <tbody>
-                @foreach (var product in Model)
+                @foreach (var product in products)
                 {
                     var isOut = product.StockQuantity <= 0;
+                    var hasReorderTarget = product.ReorderLevel > 0;
+                    var suggestedQuantity = Math.Max(product.ReorderLevel - product.StockQuantity, 0);
                     <tr>
-                        <td><strong>@product.Name</strong><div class="small text-muted">@product.Sku@(string.IsNullOrWhiteSpace(product.Color) ? "" : $" · {product.Color}")</div></td>
-                        <td>@product.Category?.Name</td>
-                        <td><span class="badge @(isOut ? "badge-low" : "text-bg-warning")">@product.StockQuantity.ToString("0.##") @product.Unit</span></td>
-                        <td>@product.ReorderLevel.ToString("0.##") @product.Unit</td>
-                        <td class="text-end">
-                            <a asp-action="Details" asp-route-id="@product.FabricId" class="btn btn-sm btn-outline-secondary">Details</a>
+                        <td class="stock-alert-product">
+                            <strong>@product.Name</strong>
+                            <div class="small text-muted">
+                                @product.Sku
+                                @if (!string.IsNullOrWhiteSpace(product.Color))
+                                {
+                                    <span> · @product.Color</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(product.Pattern))
+                                {
+                                    <span> · @product.Pattern</span>
+                                }
+                            </div>
+                            <div class="small text-muted">@(product.Category?.Name ?? "Uncategorized")</div>
+                        </td>
+                        <td data-sort-value="@(isOut ? 0 : 1)">
+                            <span class="stock-alert-priority @(isOut ? "out" : "low")">
+                                <i class="bi @(isOut ? "bi-exclamation-octagon-fill" : "bi-exclamation-triangle-fill")" aria-hidden="true"></i>
+                                @(isOut ? "Out of stock" : "Reorder")
+                            </span>
+                        </td>
+                        <td>@(product.Supplier?.Name ?? "—")</td>
+                        <td data-sort-value="@product.StockQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                            <strong>@product.StockQuantity.ToString("0.##")</strong> <span class="text-muted">@product.Unit</span>
+                        </td>
+                        <td data-sort-value="@product.ReorderLevel.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                            @if (hasReorderTarget)
+                            {
+                                <strong>@product.ReorderLevel.ToString("0.##")</strong> <span class="text-muted">@product.Unit</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Not set</span>
+                            }
+                        </td>
+                        <td data-sort-value="@suggestedQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                            @if (hasReorderTarget)
+                            {
+                                <strong class="stock-alert-suggested">@suggestedQuantity.ToString("0.##")</strong> <span class="text-muted">@product.Unit</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Set reorder point</span>
+                            }
+                        </td>
+                        <td class="stock-alert-actions">
+                            <a asp-action="Details" asp-route-id="@product.FabricId" asp-route-returnTo="LowStock"
+                               class="btn btn-sm btn-outline-secondary" title="View product details" aria-label="View @product.Name details"><i class="bi bi-eye"></i></a>
                             @if (User.IsInRole(FabriTrack.Models.Roles.Admin))
                             {
+                                @if (!hasReorderTarget)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@product.FabricId" class="btn btn-sm btn-outline-warning"
+                                       title="Set reorder point" aria-label="Set reorder point for @product.Name"><i class="bi bi-pencil"></i></a>
+                                }
                                 <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#restockModal"
-                                        data-fabric-id="@product.FabricId" data-item-name="@product.Name" data-current-stock="@product.StockQuantity @product.Unit" data-unit="@product.Unit">
-                                    <i class="bi bi-box-arrow-in-up me-1"></i>Restock
+                                        data-fabric-id="@product.FabricId" data-item-name="@product.Name" data-current-stock="@product.StockQuantity @product.Unit" data-unit="@product.Unit"
+                                        title="Restock product" aria-label="Restock @product.Name">
+                                    <i class="bi bi-box-arrow-in-up"></i>
                                 </button>
                             }
                         </td>
