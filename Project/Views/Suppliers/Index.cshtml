@@ -1,47 +1,247 @@
-@model IEnumerable<FabriTrack.Models.Supplier>
+@model FabriTrack.Models.SuppliersIndexViewModel
 @{
     ViewData["Title"] = "Suppliers";
+    var suppliers = Model.Suppliers;
 }
 
-<div class="page-header">
-    <h2><i class="bi bi-truck me-2"></i>Suppliers</h2>
-    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>Add supplier</a>
+<div class="page-header supplier-page-header">
+    <div>
+        <h2><i class="bi bi-truck me-2"></i>Suppliers</h2>
+        <p class="text-muted mb-0">Manage supplier contacts and see which products they provide.</p>
+    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSupplierModal">
+        <i class="bi bi-plus-lg me-1"></i>Add supplier
+    </button>
 </div>
 
-@if (!Model.Any())
+@if (suppliers.Count == 0)
 {
     <div class="empty-state text-center py-5">
         <i class="bi bi-inbox display-6 d-block mb-2"></i>
         <h5 class="mb-2">No suppliers yet</h5>
-        <p class="text-muted mb-3">Add your fabric suppliers so you can track sourcing and contacts.</p>
-        @if (User.IsInRole("Admin")) {
-            <a asp-action="Create" class="btn btn-primary">Add supplier</a>
-        }
+        <p class="text-muted mb-3">Add supplier contacts to keep product sourcing information in one place.</p>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSupplierModal">
+            <i class="bi bi-plus-lg me-1"></i>Add supplier
+        </button>
     </div>
 }
 else
 {
-    <div class="table-container">
-        <table class="table data-table" data-page-size="10">
-            <thead><tr><th data-sort>Name</th><th data-sort>Contact</th><th data-sort>Email</th><th data-sort>Address</th><th></th></tr></thead>
+    <section class="supplier-summary" aria-label="Supplier summary">
+        <article class="supplier-summary-card">
+            <span class="supplier-summary-icon"><i class="bi bi-truck"></i></span>
+            <div><small>Suppliers</small><strong>@suppliers.Count</strong></div>
+        </article>
+        <article class="supplier-summary-card">
+            <span class="supplier-summary-icon products"><i class="bi bi-box-seam"></i></span>
+            <div><small>Active products sourced</small><strong>@Model.ActiveProductCount</strong></div>
+        </article>
+        <article class="supplier-summary-card">
+            <span class="supplier-summary-icon archived"><i class="bi bi-archive"></i></span>
+            <div><small>Archived products</small><strong>@Model.ArchivedProductCount</strong></div>
+        </article>
+    </section>
+
+    <div class="table-container supplier-table-container">
+        <table class="table data-table supplier-table" data-page-size="10">
+            <thead>
+                <tr>
+                    <th data-sort>Supplier</th>
+                    <th data-sort>Contact</th>
+                    <th data-sort>Email</th>
+                    <th data-sort>Address</th>
+                    <th data-sort>Products</th>
+                    <th><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
             <tbody>
-                @foreach (var s in Model)
+                @foreach (var supplier in suppliers)
                 {
                     <tr>
-                        <td>@s.Name</td>
-                        <td>@s.ContactNumber</td>
-                        <td>@s.Email</td>
-                        <td>@s.Address</td>
-                        <td>
-                            <a class="btn btn-sm btn-outline-warning" asp-action="Edit" asp-route-id="@s.SupplierId"><i class="bi bi-pencil"></i></a>
-                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
-                                    data-form-action="@Url.Action("Delete", "Suppliers", new { id = s.SupplierId })" data-item-name="@s.Name">
-                                <i class="bi bi-trash3"></i>
+                        <td class="supplier-name-cell">
+                            <span class="supplier-name-icon"><i class="bi bi-building"></i></span>
+                            <strong>@supplier.Name</strong>
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(supplier.ContactNumber) ? "—" : supplier.ContactNumber)</td>
+                        <td class="supplier-email-cell">
+                            @if (!string.IsNullOrWhiteSpace(supplier.Email))
+                            {
+                                <a href="mailto:@supplier.Email">@supplier.Email</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td class="supplier-address-cell">@(string.IsNullOrWhiteSpace(supplier.Address) ? "—" : supplier.Address)</td>
+                        <td class="supplier-product-counts">
+                            @if (supplier.ActiveProductCount > 0)
+                            {
+                                <a asp-controller="Fabrics" asp-action="Index" asp-route-supplierId="@supplier.SupplierId"
+                                   class="supplier-product-count" title="View active products from @supplier.Name">
+                                    <strong>@supplier.ActiveProductCount</strong> active
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="supplier-product-count empty"><strong>0</strong> active</span>
+                            }
+                            @if (supplier.ArchivedProductCount > 0)
+                            {
+                                <a asp-controller="Fabrics" asp-action="Index" asp-route-supplierId="@supplier.SupplierId"
+                                   asp-route-includeArchived="true" class="supplier-archived-count"
+                                   title="View archived products from @supplier.Name">
+                                    @supplier.ArchivedProductCount archived
+                                </a>
+                            }
+                        </td>
+                        <td class="supplier-actions">
+                            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editSupplierModal"
+                                    data-supplier-id="@supplier.SupplierId" data-supplier-name="@supplier.Name"
+                                    data-supplier-contact="@supplier.ContactNumber" data-supplier-email="@supplier.Email"
+                                    data-supplier-address="@supplier.Address" title="Edit @supplier.Name" aria-label="Edit @supplier.Name">
+                                <i class="bi bi-pencil"></i>
                             </button>
+                            @if (supplier.TotalProductCount == 0)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                        data-form-action="@Url.Action("Delete", "Suppliers", new { id = supplier.SupplierId })" data-item-name="@supplier.Name"
+                                        title="Delete @supplier.Name" aria-label="Delete @supplier.Name">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                                        title="Reassign all active and archived products before deleting this supplier"
+                                        aria-label="Cannot delete @supplier.Name while products are assigned">
+                                    <i class="bi bi-lock"></i>
+                                </button>
+                            }
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
+}
+
+<div class="modal fade supplier-modal" id="createSupplierModal" tabindex="-1" aria-labelledby="createSupplierModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="createSupplierModalTitle"><i class="bi bi-plus-circle me-2"></i>Add supplier</h5>
+                        <p class="small text-muted mb-0 mt-1">Add a supplier and their contact information.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body supplier-modal-fields">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                    <div class="form-group">
+                        <label asp-for="CreateSupplier.Name" class="form-label">Supplier name <span class="text-danger">*</span></label>
+                        <input asp-for="CreateSupplier.Name" class="form-control" placeholder="e.g. ABC Textiles" autocomplete="organization" />
+                        <span asp-validation-for="CreateSupplier.Name" class="text-danger"></span>
+                    </div>
+                    <div class="supplier-contact-fields">
+                        <div class="form-group">
+                            <label asp-for="CreateSupplier.ContactNumber" class="form-label">Contact number <span class="text-muted">(optional)</span></label>
+                            <input asp-for="CreateSupplier.ContactNumber" class="form-control" type="tel" autocomplete="tel" placeholder="e.g. 09XX XXX XXXX" />
+                            <span asp-validation-for="CreateSupplier.ContactNumber" class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="CreateSupplier.Email" class="form-label">Email <span class="text-muted">(optional)</span></label>
+                            <input asp-for="CreateSupplier.Email" class="form-control" type="email" autocomplete="email" placeholder="name@example.com" />
+                            <span asp-validation-for="CreateSupplier.Email" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="CreateSupplier.Address" class="form-label">Address <span class="text-muted">(optional)</span></label>
+                        <textarea asp-for="CreateSupplier.Address" class="form-control" rows="2" maxlength="250"
+                                  placeholder="Supplier business or delivery address"></textarea>
+                        <span asp-validation-for="CreateSupplier.Address" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Add supplier</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade supplier-modal" id="editSupplierModal" tabindex="-1" aria-labelledby="editSupplierModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="Edit" method="post">
+                @Html.AntiForgeryToken()
+                <input asp-for="EditSupplier.SupplierId" type="hidden" />
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="editSupplierModalTitle"><i class="bi bi-pencil-square me-2"></i>Edit supplier</h5>
+                        <p class="small text-muted mb-0 mt-1">Update supplier contact details.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body supplier-modal-fields">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                    <div class="form-group">
+                        <label asp-for="EditSupplier.Name" class="form-label">Supplier name <span class="text-danger">*</span></label>
+                        <input asp-for="EditSupplier.Name" class="form-control" autocomplete="organization" />
+                        <span asp-validation-for="EditSupplier.Name" class="text-danger"></span>
+                    </div>
+                    <div class="supplier-contact-fields">
+                        <div class="form-group">
+                            <label asp-for="EditSupplier.ContactNumber" class="form-label">Contact number <span class="text-muted">(optional)</span></label>
+                            <input asp-for="EditSupplier.ContactNumber" class="form-control" type="tel" autocomplete="tel" />
+                            <span asp-validation-for="EditSupplier.ContactNumber" class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="EditSupplier.Email" class="form-label">Email <span class="text-muted">(optional)</span></label>
+                            <input asp-for="EditSupplier.Email" class="form-control" type="email" autocomplete="email" />
+                            <span asp-validation-for="EditSupplier.Email" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="EditSupplier.Address" class="form-label">Address <span class="text-muted">(optional)</span></label>
+                        <textarea asp-for="EditSupplier.Address" class="form-control" rows="2" maxlength="250"
+                                  placeholder="Supplier business or delivery address"></textarea>
+                        <span asp-validation-for="EditSupplier.Address" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var editModal = document.getElementById("editSupplierModal");
+            if (editModal) {
+                editModal.addEventListener("show.bs.modal", function (event) {
+                    var trigger = event.relatedTarget;
+                    if (!trigger) return;
+                    document.getElementById("EditSupplier_SupplierId").value = trigger.getAttribute("data-supplier-id") || "";
+                    document.getElementById("EditSupplier_Name").value = trigger.getAttribute("data-supplier-name") || "";
+                    document.getElementById("EditSupplier_ContactNumber").value = trigger.getAttribute("data-supplier-contact") || "";
+                    document.getElementById("EditSupplier_Email").value = trigger.getAttribute("data-supplier-email") || "";
+                    document.getElementById("EditSupplier_Address").value = trigger.getAttribute("data-supplier-address") || "";
+                });
+            }
+
+            var modalToOpen = "@(Model.OpenCreateModal ? "createSupplierModal" : Model.OpenEditModal ? "editSupplierModal" : "")";
+            if (modalToOpen) {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById(modalToOpen)).show();
+            }
+        })();
+    </script>
 }

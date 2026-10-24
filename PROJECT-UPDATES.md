@@ -63,6 +63,13 @@ This file tracks the features and project changes implemented during the current
 - Disabled deletion when active or archived products still reference a category, and added a server-side check to prevent linked categories from being deleted.
 - Moved category creation and editing into compact list-screen modals, retaining validation feedback and reopening the relevant modal after invalid submissions.
 
+### Suppliers
+
+- Added active and archived product counts to supplier listings, with links to the matching filtered Product Inventory view.
+- Added supplier-level overview cards and improved the empty state and contact information layout, including direct email links.
+- Moved supplier creation and editing into a wider list-screen modal for supplier and contact fields, retaining validation feedback and reopening the relevant modal after invalid submissions.
+- Disabled supplier deletion when active or archived products reference the supplier, with a server-side guard against deleting linked records.
+
 ### Fabrics — Product Inventory
 
 - Reframed the Fabrics area as Product Inventory, with searchable product cards, SKU and color-variant details, category/supplier/unit/stock filters, and sort options.
