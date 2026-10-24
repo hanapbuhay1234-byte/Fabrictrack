@@ -48,13 +48,19 @@
 
             <div class="nav-section-label">Overview</div>
             <a class="@NavClass("Home")" asp-controller="Home" asp-action="Index"><i class="bi bi-speedometer2"></i> Dashboard</a>
-            <a class="@NavClass("Reports")" asp-controller="Reports" asp-action="Index"><i class="bi bi-graph-up-arrow"></i> Sales Analytics</a>
+            @if (User.IsInRole(FabriTrack.Models.Roles.Admin))
+            {
+                <a class="@NavClass("Reports")" asp-controller="Reports" asp-action="Index"><i class="bi bi-graph-up-arrow"></i> Sales Analytics</a>
+            }
 
             <div class="nav-section-label">Inventory</div>
             <a class="@NavClass("Fabrics", "LowStock")" asp-controller="Fabrics" asp-action="Index"><i class="bi bi-boxes"></i> Product Inventory</a>
             <a class="@NavClassAct("Fabrics","LowStock")" asp-controller="Fabrics" asp-action="LowStock"><i class="bi bi-exclamation-triangle"></i> Stock alerts</a>
-            <a class="@NavClass("Categories")" asp-controller="Categories" asp-action="Index"><i class="bi bi-tags"></i> Categories</a>
-            <a class="@NavClass("Suppliers")" asp-controller="Suppliers" asp-action="Index"><i class="bi bi-truck"></i> Suppliers</a>
+            @if (User.IsInRole(FabriTrack.Models.Roles.Admin))
+            {
+                <a class="@NavClass("Categories")" asp-controller="Categories" asp-action="Index"><i class="bi bi-tags"></i> Categories</a>
+                <a class="@NavClass("Suppliers")" asp-controller="Suppliers" asp-action="Index"><i class="bi bi-truck"></i> Suppliers</a>
+            }
 
             @if (User.IsInRole(FabriTrack.Models.Roles.Admin))
             {
@@ -67,6 +73,11 @@
             <a class="nav-link" asp-controller="Sales" asp-action="Create"><i class="bi bi-cart-plus"></i> New sale</a>
             <a class="@NavClassAct("Sales","Index")" asp-controller="Sales" asp-action="Index"><i class="bi bi-receipt"></i> Sales history</a>
             <a class="@NavClass("Customers")" asp-controller="Customers" asp-action="Index"><i class="bi bi-people"></i> Customers</a>
+            @if (User.IsInRole(FabriTrack.Models.Roles.Staff) && !User.IsInRole(FabriTrack.Models.Roles.Admin))
+            {
+                <div class="nav-section-label">My activity</div>
+                <a class="@NavClass("AuditLogs")" asp-controller="AuditLogs" asp-action="Index"><i class="bi bi-journal-text"></i> My audit activity</a>
+            }
 
             <div class="sidebar-footer">&copy; @DateTime.Now.Year FabriTrack</div>
         </aside>

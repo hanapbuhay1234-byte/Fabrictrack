@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FabriTrack.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class FabricsController : Controller
     {
         private readonly ApplicationDbContext _context;

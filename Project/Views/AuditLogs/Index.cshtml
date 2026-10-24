@@ -2,12 +2,13 @@
 @using System.Text.Json
 @{
     ViewData["Title"] = "Audit logs";
+    var isAdmin = User.IsInRole(FabriTrack.Models.Roles.Admin);
 }
 
 <div class="page-header audit-log-header">
     <div>
         <h2><i class="bi bi-journal-text me-2"></i>Audit logs</h2>
-        <p class="text-muted mb-0">Review account and business-data changes made by administrators and staff.</p>
+        <p class="text-muted mb-0">@(isAdmin ? "Review account and business-data changes made by administrators and staff." : "Review your own account and business activity.")</p>
     </div>
     <a asp-action="Export"
        asp-route-search="@Model.Search"
@@ -27,16 +28,19 @@
             <label for="auditSearch" class="form-label">Search activity</label>
             <input id="auditSearch" name="search" value="@Model.Search" class="form-control" type="search" placeholder="Actor, action, or record" />
         </div>
-        <div>
-            <label for="auditActor" class="form-label">User</label>
-            <select id="auditActor" name="actor" class="form-select">
-                <option value="">All users</option>
-                @foreach (var actor in Model.Actors)
-                {
-                    <option value="@actor" selected="@(Model.Actor == actor)">@actor</option>
-                }
-            </select>
-        </div>
+        @if (isAdmin)
+        {
+            <div>
+                <label for="auditActor" class="form-label">User</label>
+                <select id="auditActor" name="actor" class="form-select">
+                    <option value="">All users</option>
+                    @foreach (var actor in Model.Actors)
+                    {
+                        <option value="@actor" selected="@(Model.Actor == actor)">@actor</option>
+                    }
+                </select>
+            </div>
+        }
         <div>
             <label for="auditAction" class="form-label">Action</label>
             <select id="auditAction" name="action" class="form-select">

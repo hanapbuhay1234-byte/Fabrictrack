@@ -2,6 +2,7 @@ namespace FabriTrack.Models
 {
     public class DashboardViewModel
     {
+        public bool IsAdmin { get; set; }
         public int PeriodDays { get; set; }
         public DateTime PeriodStart { get; set; }
         public DateTime PeriodEnd { get; set; }

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FabriTrack.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class ProfileController : Controller
     {
         private const long MaxPhotoBytes = 5 * 1024 * 1024;

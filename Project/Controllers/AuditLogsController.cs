@@ -5,10 +5,11 @@ using FabriTrack.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace FabriTrack.Controllers
 {
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class AuditLogsController : Controller
     {
         private const int PageSize = 25;
@@ -114,6 +115,14 @@ namespace FabriTrack.Controllers
         private IQueryable<AuditLog> FilterLogs(AuditLogViewModel filters)
         {
             var query = _context.AuditLogs.AsNoTracking();
+            if (!User.IsInRole(Roles.Admin))
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                query = userId == null
+                    ? query.Where(entry => false)
+                    : query.Where(entry => entry.ActorUserId == userId);
+            }
+
             if (!string.IsNullOrWhiteSpace(filters.Search))
             {
                 var term = filters.Search;
@@ -145,18 +154,19 @@ namespace FabriTrack.Controllers
 
         private async Task PopulateFilterOptionsAsync(AuditLogViewModel model)
         {
-            model.Actors = await _context.AuditLogs.AsNoTracking()
+            var visibleLogs = FilterLogs(new AuditLogViewModel());
+            model.Actors = await visibleLogs
                 .Select(entry => entry.ActorName)
                 .Distinct()
                 .OrderBy(name => name)
                 .Take(200)
                 .ToListAsync();
-            model.Actions = await _context.AuditLogs.AsNoTracking()
+            model.Actions = await visibleLogs
                 .Select(entry => entry.Action)
                 .Distinct()
                 .OrderBy(name => name)
                 .ToListAsync();
-            model.EntityTypes = await _context.AuditLogs.AsNoTracking()
+            model.EntityTypes = await visibleLogs
                 .Select(entry => entry.EntityType)
                 .Distinct()
                 .OrderBy(name => name)

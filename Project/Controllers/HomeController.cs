@@ -3,6 +3,7 @@ using FabriTrack.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 using System.Diagnostics;
 
@@ -13,7 +14,7 @@ namespace FabriTrack.Controllers
         private readonly ApplicationDbContext _context;
         public HomeController(ApplicationDbContext context) => _context = context;
 
-        [Authorize]
+        [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
         public async Task<IActionResult> Index(string? period)
         {
             var periodDays = period switch
@@ -32,9 +33,21 @@ namespace FabriTrack.Controllers
                 .Where(sale => !sale.IsVoided && sale.SaleDate >= periodStart && sale.SaleDate < periodEnd);
             var previousSales = _context.Sales
                 .Where(sale => !sale.IsVoided && sale.SaleDate >= previousPeriodStart && sale.SaleDate < periodStart);
+            var isAdmin = User.IsInRole(Roles.Admin);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!isAdmin)
+            {
+                currentSales = userId == null
+                    ? currentSales.Where(sale => false)
+                    : currentSales.Where(sale => sale.CashierId == userId);
+                previousSales = userId == null
+                    ? previousSales.Where(sale => false)
+                    : previousSales.Where(sale => sale.CashierId == userId);
+            }
 
             var model = new DashboardViewModel
             {
+                IsAdmin = isAdmin,
                 PeriodDays = periodDays,
                 PeriodStart = periodStart,
                 PeriodEnd = today,
@@ -77,7 +90,8 @@ namespace FabriTrack.Controllers
             model.TopFabrics = await _context.SaleItems
                 .Where(item => item.Sale != null && !item.Sale.IsVoided &&
                     item.Sale.SaleDate >= periodStart &&
-                    item.Sale.SaleDate < periodEnd)
+                    item.Sale.SaleDate < periodEnd &&
+                    (isAdmin || (userId != null && item.Sale.CashierId == userId)))
                 .GroupBy(item => new { item.ProductSku, item.ProductName, item.Color, item.Unit })
                 .Select(group => new DashboardTopFabric
                 {
@@ -106,8 +120,17 @@ namespace FabriTrack.Controllers
                 .Take(6)
                 .ToListAsync();
 
-            model.RecentSales = await _context.Sales
+            var recentSales = _context.Sales
                 .Where(sale => !sale.IsVoided)
+                .AsQueryable();
+            if (!isAdmin)
+            {
+                recentSales = userId == null
+                    ? recentSales.Where(sale => false)
+                    : recentSales.Where(sale => sale.CashierId == userId);
+            }
+
+            model.RecentSales = await recentSales
                 .Include(s => s.Customer)
                 .Include(s => s.SaleItems)
                 .OrderByDescending(s => s.SaleDate)

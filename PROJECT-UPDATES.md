@@ -55,6 +55,14 @@ This file tracks the features and project changes implemented during the current
 - Raised password requirements to 10 characters with uppercase, lowercase, number, and symbol; staff password resets also force a password change.
 - Added migration `20261024092541_AddStaffAccountLifecycle` for user activation and first-login password-change state.
 - Updated `Project\Database\SETUP.md` to remind operators to apply current migrations before running the updated application.
+
+### Role-scoped staff workspace
+
+- Staff can access the dashboard, active inventory and stock alerts, sales entry, customer lookup/creation, their own sales history and receipts, their own customer-purchase history, and their own audit activity.
+- Hid the Categories and Suppliers sidebar links from staff while keeping the Inventory section for product browsing and stock alerts; administrators still see the management links.
+- Sales history, CSV exports, direct receipt URLs, dashboard sales metrics, and customer purchase summaries are scoped server-side to the signed-in staff member; admins retain full visibility and can filter sales by processor.
+- Staff can view only their own audit rows; the audit page and CSV export enforce actor-user-ID scoping even when query parameters are manually changed.
+- Restricted Sales Analytics, categories, suppliers, product and stock management, sale voiding, and user management to administrators; navigation is role-aware to match endpoint authorization.
 - Preserved optional customer selection and server-side checkout pricing/stock validation.
 - Added server-side quantity validation, duplicate-fabric aggregation, and cart restoration when validation fails.
 - Files: `Project\Controllers\SalesController.cs`, `Project\Views\Sales\Create.cshtml`, `Project\wwwroot\css\site.css`

@@ -3,10 +3,11 @@ using FabriTrack.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace FabriTrack.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class CustomersController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -29,17 +30,19 @@ namespace FabriTrack.Controllers
                     FullName = item.FullName,
                     ContactNumber = item.ContactNumber,
                     Email = item.Email,
-                    Address = item.Address,
-                    CompletedPurchaseCount = item.Sales.Count(sale => !sale.IsVoided),
-                    LifetimeSpend = item.Sales.Where(sale => !sale.IsVoided).Sum(sale => (decimal?)sale.TotalAmount) ?? 0m,
-                    TotalPurchases = item.Sales.Count(sale => !sale.IsVoided)
+                    Address = item.Address
                 })
                 .FirstOrDefaultAsync();
             if (customer == null) return NotFound();
-            customer.Page = Math.Clamp(page, 1, customer.TotalPages);
-            customer.Purchases = await _context.Sales
+
+            var customerSales = VisibleSales()
                 .AsNoTracking()
-                .Where(sale => sale.CustomerId == id && !sale.IsVoided)
+                .Where(sale => sale.CustomerId == id && !sale.IsVoided);
+            customer.TotalPurchases = await customerSales.CountAsync();
+            customer.CompletedPurchaseCount = customer.TotalPurchases;
+            customer.LifetimeSpend = await customerSales.SumAsync(sale => (decimal?)sale.TotalAmount) ?? 0m;
+            customer.Page = Math.Clamp(page, 1, customer.TotalPages);
+            customer.Purchases = await customerSales
                 .OrderByDescending(sale => sale.SaleDate)
                 .ThenByDescending(sale => sale.SaleId)
                 .Skip((customer.Page - 1) * customer.PageSize)
@@ -148,7 +151,7 @@ namespace FabriTrack.Controllers
 
             model.TotalCustomers = await query.CountAsync();
             var matchingCustomerIds = query.Select(customer => customer.CustomerId);
-            var completedSales = _context.Sales
+            var completedSales = VisibleSales()
                 .Where(sale => !sale.IsVoided && sale.CustomerId.HasValue && matchingCustomerIds.Contains(sale.CustomerId.Value));
             model.CompletedPurchases = await completedSales.CountAsync();
             model.CompletedSpend = await completedSales.SumAsync(sale => (decimal?)sale.TotalAmount) ?? 0m;
@@ -170,6 +173,18 @@ namespace FabriTrack.Controllers
                 })
                 .ToListAsync();
             return model;
+        }
+
+        private IQueryable<Sale> VisibleSales()
+        {
+            var query = _context.Sales.AsQueryable();
+            if (User.IsInRole(Roles.Admin))
+                return query;
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return userId == null
+                ? query.Where(sale => false)
+                : query.Where(sale => sale.CashierId == userId);
         }
     }
 }

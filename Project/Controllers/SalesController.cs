@@ -6,11 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 
 namespace FabriTrack.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class SalesController : Controller
     {
         private sealed class CheckoutValidationException(string message) : Exception(message) { }
@@ -26,7 +27,7 @@ namespace FabriTrack.Controllers
 
         public async Task<IActionResult> Receipt(int id)
         {
-            var sale = await _context.Sales
+            var sale = await VisibleSales()
                 .Include(s => s.Customer)
                 .Include(s => s.SaleItems).ThenInclude(si => si.Fabric)
                 .FirstOrDefaultAsync(s => s.SaleId == id);
@@ -54,7 +55,8 @@ namespace FabriTrack.Controllers
                 Page = Math.Max(1, page)
             };
             await PopulateSalesHistoryCustomersAsync(model);
-            await PopulateSalesHistoryCashiersAsync(model);
+            if (User.IsInRole(Roles.Admin))
+                await PopulateSalesHistoryCashiersAsync(model);
 
             if (startDate.HasValue && endDate.HasValue && startDate.Value.Date > endDate.Value.Date)
             {
@@ -63,7 +65,7 @@ namespace FabriTrack.Controllers
             }
 
             var query = FilterSalesHistory(
-                _context.Sales.AsNoTracking(),
+                VisibleSales().AsNoTracking(),
                 model.Search,
                 model.StartDate,
                 model.EndDate,
@@ -110,7 +112,7 @@ namespace FabriTrack.Controllers
             }
 
             var query = FilterSalesHistory(
-                _context.Sales.AsNoTracking(),
+                VisibleSales().AsNoTracking(),
                 search?.Trim(),
                 startDate?.Date,
                 endDate?.Date,
@@ -250,7 +252,7 @@ namespace FabriTrack.Controllers
 
         public async Task<IActionResult> Details(int id)
         {
-            var sale = await _context.Sales.Include(s => s.Customer)
+            var sale = await VisibleSales().Include(s => s.Customer)
                 .Include(s => s.SaleItems).ThenInclude(si => si.Fabric)
                 .FirstOrDefaultAsync(s => s.SaleId == id);
             if (sale == null) return NotFound();
@@ -449,6 +451,18 @@ namespace FabriTrack.Controllers
                 query = query.Where(sale => sale.CashierId == cashierId);
 
             return query;
+        }
+
+        private IQueryable<Sale> VisibleSales()
+        {
+            var query = _context.Sales.AsQueryable();
+            if (User.IsInRole(Roles.Admin))
+                return query;
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return userId == null
+                ? query.Where(sale => false)
+                : query.Where(sale => sale.CashierId == userId);
         }
 
         private async Task PopulateSalesHistoryCustomersAsync(SalesHistoryViewModel model)

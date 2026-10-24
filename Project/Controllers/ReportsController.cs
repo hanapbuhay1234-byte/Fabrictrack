@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FabriTrack.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = Roles.Admin)]
     public class ReportsController : Controller
     {
         private readonly ApplicationDbContext _context;
