@@ -1,86 +1,253 @@
+@model DashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
-    var recentSales = (IEnumerable<Sale>)ViewBag.RecentSales;
+    var periodLabel = $"Last {Model.PeriodDays} days";
+
+    string ComparisonText(decimal current, decimal previous)
+    {
+        if (previous == 0)
+        {
+            return current == 0 ? "No sales in the previous period" : "Sales started this period";
+        }
+
+        var change = (current - previous) / previous * 100;
+        return $"{Math.Abs(change):0.#}% {(change >= 0 ? "up" : "down")} vs previous period";
+    }
+
+    string ComparisonClass(decimal current, decimal previous)
+    {
+        if (current == previous) return "dashboard-comparison neutral";
+        return current > previous ? "dashboard-comparison positive" : "dashboard-comparison negative";
+    }
 }
 
-<div class="page-header">
-    <h2><i class="bi bi-speedometer2 me-2"></i>Dashboard</h2>
+<div class="page-header dashboard-header">
+    <div>
+        <h2><i class="bi bi-speedometer2 me-2"></i>Owner dashboard</h2>
+        <p class="text-muted mb-0">A clear view of sales performance and inventory that needs attention.</p>
+    </div>
     <a asp-controller="Sales" asp-action="Create" class="btn btn-primary"><i class="bi bi-cart-plus me-1"></i>New sale</a>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-chip primary"><i class="bi bi-boxes"></i></div>
-            <div class="stat-body">
-                <div class="stat-value">@ViewBag.TotalFabrics</div>
-                <div class="stat-label">Total fabrics</div>
-                <div class="stat-secondary">All active products in inventory</div>
-            </div>
+<section class="dashboard-section" aria-labelledby="performanceHeading">
+    <div class="dashboard-section-header">
+        <div>
+            <h3 id="performanceHeading">Sales performance</h3>
+            <p class="text-muted mb-0">Compare revenue and order activity across equal-length periods.</p>
+        </div>
+        <form method="get" class="dashboard-period-form">
+            <label class="visually-hidden" for="dashboardPeriod">Sales period</label>
+            <select id="dashboardPeriod" name="period" class="form-select" onchange="this.form.submit()">
+                <option value="7d" selected="@(Model.PeriodDays == 7)">Last 7 days</option>
+                <option value="30d" selected="@(Model.PeriodDays == 30)">Last 30 days</option>
+                <option value="90d" selected="@(Model.PeriodDays == 90)">Last 90 days</option>
+            </select>
+        </form>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <article class="stat-card dashboard-stat-card">
+                <div class="stat-chip success"><i class="bi bi-currency-exchange"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Sales revenue</div>
+                    <div class="stat-value">₱@Model.SalesRevenue.ToString("N2")</div>
+                    <div class="@ComparisonClass(Model.SalesRevenue, Model.PreviousSalesRevenue)">@ComparisonText(Model.SalesRevenue, Model.PreviousSalesRevenue)</div>
+                </div>
+            </article>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <article class="stat-card dashboard-stat-card">
+                <div class="stat-chip primary"><i class="bi bi-receipt"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Orders</div>
+                    <div class="stat-value">@Model.SalesCount</div>
+                    <div class="@ComparisonClass(Model.SalesCount, Model.PreviousSalesCount)">
+                        @ComparisonText(Model.SalesCount, Model.PreviousSalesCount)
+                    </div>
+                </div>
+            </article>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <article class="stat-card dashboard-stat-card">
+                <div class="stat-chip accent"><i class="bi bi-basket"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Average order value</div>
+                    <div class="stat-value">₱@Model.AverageSale.ToString("N2")</div>
+                    <div class="stat-secondary">@periodLabel</div>
+                </div>
+            </article>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <article class="stat-card dashboard-stat-card">
+                <div class="stat-chip @(Model.OutOfStockCount + Model.LowStockCount > 0 ? "danger" : "success")"><i class="bi bi-exclamation-triangle"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Stock alerts</div>
+                    <div class="stat-value">@(Model.OutOfStockCount + Model.LowStockCount)</div>
+                    <div class="stat-secondary">@Model.OutOfStockCount out · @Model.LowStockCount low</div>
+                </div>
+            </article>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-chip danger"><i class="bi bi-exclamation-triangle-fill"></i></div>
-            <div class="stat-body">
-                <div class="stat-value">@ViewBag.LowStockCount</div>
-                <div class="stat-label">Out of stock items</div>
-                <div class="stat-secondary"><a href="@Url.Action("LowStock", "Fabrics")">View report</a></div>
+</section>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <section class="dashboard-panel h-100" aria-labelledby="trendHeading">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h3 id="trendHeading">Revenue trend</h3>
+                    <p class="text-muted mb-0">@Model.PeriodStart.ToString("MMM d") – @Model.PeriodEnd.ToString("MMM d, yyyy")</p>
+                </div>
+                <span class="dashboard-panel-note">Compared with previous @Model.PeriodDays days</span>
             </div>
-        </div>
+            @if (Model.SalesRevenue == 0)
+            {
+                <div class="dashboard-chart-empty">
+                    <i class="bi bi-bar-chart-line"></i>
+                    <span>No sales in this period yet.</span>
+                </div>
+            }
+            else
+            {
+                <div class="dashboard-chart-scroll">
+                    <div class="dashboard-chart" role="img" aria-label="Daily sales revenue during the selected period">
+                        @foreach (var day in Model.SalesTrend)
+                        {
+                            <div class="dashboard-chart-column" title="@day.Date.ToString("MMM d, yyyy"): ₱@day.Revenue.ToString("N2") from @day.OrderCount orders">
+                                <div class="dashboard-chart-value">@(day.Revenue > 0 ? $"₱{day.Revenue:N0}" : "")</div>
+                                <div class="dashboard-chart-track">
+                                    <div class="dashboard-chart-bar" style="height: @(day.BarHeightPercent)%"></div>
+                                </div>
+                                <div class="dashboard-chart-label">@day.Date.ToString("MMM d")</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </section>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-chip success"><i class="bi bi-graph-up-arrow"></i></div>
-            <div class="stat-body">
-                <div class="stat-value">₱@ViewBag.TodaySales.ToString("N2")</div>
-                <div class="stat-label">Today's sales</div>
-                <div class="stat-secondary">Sales completed today</div>
+    <div class="col-xl-4">
+        <section class="dashboard-panel h-100" aria-labelledby="topFabricsHeading">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h3 id="topFabricsHeading">Top-selling fabrics</h3>
+                    <p class="text-muted mb-0">@periodLabel, ranked by quantity sold</p>
+                </div>
             </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-chip accent"><i class="bi bi-people"></i></div>
-            <div class="stat-body">
-                <div class="stat-value">@ViewBag.TotalCustomers</div>
-                <div class="stat-label">Customers</div>
-                <div class="stat-secondary">Distinct customers in database</div>
-            </div>
-        </div>
+            @if (Model.TopFabrics.Count == 0)
+            {
+                <div class="dashboard-list-empty">No fabric sales in this period yet.</div>
+            }
+            else
+            {
+                <div class="dashboard-top-list">
+                    @for (var index = 0; index < Model.TopFabrics.Count; index++)
+                    {
+                        var fabric = Model.TopFabrics[index];
+                        <div class="dashboard-top-item">
+                            <span class="dashboard-rank">@((index + 1).ToString("00"))</span>
+                            <div class="dashboard-top-name">
+                                <strong>@fabric.Name</strong>
+                                <span>@fabric.QuantitySold.ToString("0.##") @fabric.Unit sold</span>
+                            </div>
+                            <strong class="dashboard-top-revenue">₱@fabric.Revenue.ToString("N2")</strong>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
     </div>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h4 class="mb-0"><i class="bi bi-receipt me-2"></i>Recent Sales</h4>
-    <a asp-controller="Sales" asp-action="Index" class="btn btn-sm btn-outline-secondary">View all</a>
-</div>
-
-@if (recentSales.Any())
-{
-    <div class="table-container">
-        <table class="table table-striped table-hover data-table" data-page-size="5">
-            <thead>
-                <tr><th data-sort>#</th><th data-sort>Date</th><th data-sort>Customer</th><th data-sort>Total</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var sale in recentSales)
+<div class="row g-4">
+    <div class="col-xl-5">
+        <section class="dashboard-panel h-100" aria-labelledby="stockAlertsHeading">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h3 id="stockAlertsHeading">Inventory needing attention</h3>
+                    <p class="text-muted mb-0">Low stock is 5 units or fewer; out means zero units.</p>
+                </div>
+                <a asp-controller="Fabrics" asp-action="Index" class="btn btn-sm btn-outline-secondary">Inventory</a>
+            </div>
+            @if (Model.StockAlerts.Count == 0)
+            {
+                <div class="dashboard-stock-clear">
+                    <i class="bi bi-check-circle"></i>
+                    <div><strong>Stock looks good</strong><span>No fabrics are out of stock or at the low-stock threshold.</span></div>
+                </div>
+            }
+            else
+            {
+                <div class="dashboard-stock-list">
+                    @foreach (var fabric in Model.StockAlerts)
+                    {
+                        var isOutOfStock = fabric.StockQuantity <= 0;
+                        <a asp-controller="Fabrics" asp-action="Details" asp-route-id="@fabric.FabricId" class="dashboard-stock-item">
+                            <span class="dashboard-stock-icon @(isOutOfStock ? "out" : "low")">
+                                <i class="bi @(isOutOfStock ? "bi-x-circle" : "bi-exclamation-circle")"></i>
+                            </span>
+                            <span class="dashboard-stock-name">
+                                <strong>@fabric.Name</strong>
+                                <small>@(fabric.Category?.Name ?? "Uncategorized") · @(isOutOfStock ? "Out of stock" : "Low stock")</small>
+                            </span>
+                            <strong class="dashboard-stock-quantity">@fabric.StockQuantity.ToString("0.##") @fabric.Unit</strong>
+                            <i class="bi bi-chevron-right dashboard-stock-chevron"></i>
+                        </a>
+                    }
+                </div>
+                @if (Model.OutOfStockCount + Model.LowStockCount > Model.StockAlerts.Count)
                 {
-                    <tr>
-                        <td>@sale.SaleId</td>
-                        <td data-sort-value="@sale.SaleDate.ToString("yyyy-MM-ddTHH:mm")">@sale.SaleDate.ToString("MMM d, yyyy h:mm tt")</td>
-                        <td>@(sale.Customer?.FullName ?? "Walk-in")</td>
-                        <td>₱@sale.TotalAmount.ToString("N2")</td>
-                    </tr>
+                    <div class="dashboard-more-alerts">Showing 6 of @(Model.OutOfStockCount + Model.LowStockCount) items needing attention.</div>
                 }
-            </tbody>
-        </table>
+            }
+        </section>
     </div>
-}
-else
-{
-    <div class="text-center text-muted py-5">
-        <i class="bi bi-inbox display-6 d-block mb-2"></i>
-        No sales recorded yet.
+    <div class="col-xl-7">
+        <section class="dashboard-panel h-100" aria-labelledby="recentSalesHeading">
+            <div class="dashboard-panel-header">
+                <div>
+                    <h3 id="recentSalesHeading">Recent sales</h3>
+                    <p class="text-muted mb-0">Latest recorded transactions</p>
+                </div>
+                <a asp-controller="Sales" asp-action="Index" class="btn btn-sm btn-outline-secondary">All sales</a>
+            </div>
+            @if (Model.RecentSales.Count == 0)
+            {
+                <div class="dashboard-list-empty">No sales recorded yet. Your completed transactions will appear here.</div>
+            }
+            else
+            {
+                <div class="table-responsive dashboard-recent-sales">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr><th>Sale</th><th>Customer</th><th class="text-end">Total</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var sale in Model.RecentSales)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>#@sale.SaleId</strong>
+                                        <small class="d-block text-muted">@sale.SaleDate.ToString("MMM d, h:mm tt")</small>
+                                    </td>
+                                    <td>
+                                        @(sale.Customer?.FullName ?? "Walk-in")
+                                        <small class="d-block text-muted">@sale.SaleItems.Count @(sale.SaleItems.Count == 1 ? "line item" : "line items")</small>
+                                    </td>
+                                    <td class="text-end text-nowrap fw-semibold">₱@sale.TotalAmount.ToString("N2")</td>
+                                    <td class="text-end">
+                                        <a asp-controller="Sales" asp-action="Details" asp-route-id="@sale.SaleId"
+                                           class="btn btn-sm btn-outline-secondary" aria-label="View sale @sale.SaleId">
+                                            <i class="bi bi-arrow-up-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
     </div>
-}
+</div>

@@ -14,24 +14,102 @@ namespace FabriTrack.Controllers
         public HomeController(ApplicationDbContext context) => _context = context;
 
         [Authorize]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? period)
         {
-            ViewBag.TotalFabrics = await _context.Fabrics.CountAsync();
-            ViewBag.LowStockCount = await _context.Fabrics.CountAsync(f => f.StockQuantity <= 0);
-            ViewBag.TotalCustomers = await _context.Customers.CountAsync();
+            var periodDays = period switch
+            {
+                "30d" => 30,
+                "90d" => 90,
+                _ => 7
+            };
 
             var today = DateTime.Today;
-            ViewBag.TodaySales = await _context.Sales
-                .Where(s => s.SaleDate.Date == today)
-                .SumAsync(s => (decimal?)s.TotalAmount) ?? 0;
+            var periodStart = today.AddDays(1 - periodDays);
+            var periodEnd = today.AddDays(1);
+            var previousPeriodStart = periodStart.AddDays(-periodDays);
 
-            ViewBag.RecentSales = await _context.Sales
-                .Include(s => s.Customer)
-                .OrderByDescending(s => s.SaleDate)
+            var currentSales = _context.Sales
+                .Where(sale => sale.SaleDate >= periodStart && sale.SaleDate < periodEnd);
+            var previousSales = _context.Sales
+                .Where(sale => sale.SaleDate >= previousPeriodStart && sale.SaleDate < periodStart);
+
+            var model = new DashboardViewModel
+            {
+                PeriodDays = periodDays,
+                PeriodStart = periodStart,
+                PeriodEnd = today,
+                SalesRevenue = await currentSales.SumAsync(sale => (decimal?)sale.TotalAmount) ?? 0,
+                PreviousSalesRevenue = await previousSales.SumAsync(sale => (decimal?)sale.TotalAmount) ?? 0,
+                SalesCount = await currentSales.CountAsync(),
+                PreviousSalesCount = await previousSales.CountAsync()
+            };
+            model.AverageSale = model.SalesCount == 0 ? 0 : model.SalesRevenue / model.SalesCount;
+
+            var dailySales = await currentSales
+                .GroupBy(sale => sale.SaleDate.Date)
+                .Select(group => new
+                {
+                    Date = group.Key,
+                    Revenue = group.Sum(sale => sale.TotalAmount),
+                    OrderCount = group.Count()
+                })
+                .ToListAsync();
+
+            var dailySalesByDate = dailySales.ToDictionary(sale => sale.Date.Date);
+            var maxDailyRevenue = dailySales.Count == 0 ? 0 : dailySales.Max(sale => sale.Revenue);
+            model.SalesTrend = Enumerable.Range(0, periodDays)
+                .Select(offset =>
+                {
+                    var date = periodStart.AddDays(offset);
+                    dailySalesByDate.TryGetValue(date, out var dailySale);
+                    return new DashboardSalesDay
+                    {
+                        Date = date,
+                        Revenue = dailySale?.Revenue ?? 0,
+                        OrderCount = dailySale?.OrderCount ?? 0,
+                        BarHeightPercent = maxDailyRevenue == 0
+                            ? 0
+                            : (int)Math.Round((dailySale?.Revenue ?? 0) / maxDailyRevenue * 100)
+                    };
+                })
+                .ToList();
+
+            model.TopFabrics = await _context.SaleItems
+                .Where(item => item.Sale != null &&
+                    item.Sale.SaleDate >= periodStart &&
+                    item.Sale.SaleDate < periodEnd)
+                .GroupBy(item => new { item.Fabric!.Name, item.Fabric.Unit })
+                .Select(group => new DashboardTopFabric
+                {
+                    Name = group.Key.Name,
+                    Unit = group.Key.Unit,
+                    QuantitySold = group.Sum(item => item.Quantity),
+                    Revenue = group.Sum(item => item.Quantity * item.UnitPrice)
+                })
+                .OrderByDescending(fabric => fabric.QuantitySold)
+                .ThenByDescending(fabric => fabric.Revenue)
                 .Take(5)
                 .ToListAsync();
 
-            return View();
+            model.OutOfStockCount = await _context.Fabrics.CountAsync(fabric => fabric.StockQuantity <= 0);
+            model.LowStockCount = await _context.Fabrics.CountAsync(fabric =>
+                fabric.StockQuantity > 0 && fabric.StockQuantity <= 5);
+            model.StockAlerts = await _context.Fabrics
+                .Include(fabric => fabric.Category)
+                .Where(fabric => fabric.StockQuantity <= 5)
+                .OrderBy(fabric => fabric.StockQuantity)
+                .ThenBy(fabric => fabric.Name)
+                .Take(6)
+                .ToListAsync();
+
+            model.RecentSales = await _context.Sales
+                .Include(s => s.Customer)
+                .Include(s => s.SaleItems)
+                .OrderByDescending(s => s.SaleDate)
+                .Take(6)
+                .ToListAsync();
+
+            return View(model);
         }
 
         public IActionResult Error()
