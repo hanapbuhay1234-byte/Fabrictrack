@@ -220,7 +220,8 @@ else
                                 <i class="bi bi-box-arrow-in-up"></i>
                             </button>
                             <a class="btn btn-sm btn-outline-warning" asp-action="Edit" asp-route-id="@product.FabricId" title="Edit product" aria-label="Edit product"><i class="bi bi-pencil"></i></a>
-                            <form asp-action="Archive" method="post" class="d-inline" onsubmit="return confirm('Archive this product? Its sales and inventory history will be kept.');">
+                            <form asp-action="Archive" method="post" class="d-inline"
+                                  data-confirm-action="archive-product" data-item-name="@product.Name">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@product.FabricId" />
                                 <button type="submit" class="btn btn-sm btn-outline-secondary" title="Archive product" aria-label="Archive product"><i class="bi bi-archive"></i></button>

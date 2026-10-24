@@ -136,7 +136,7 @@
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <form asp-action="ResetPassword" method="post" class="d-inline"
-                                      data-confirm-action="reset-password" data-staff-name="@staff.FullName">
+                                      data-confirm-action="reset-password" data-item-name="@staff.FullName">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@staff.Id" />
                                     <input type="hidden" name="search" value="@Model.Search" />
@@ -146,7 +146,7 @@
                                     </button>
                                 </form>
                                 <form asp-action="SetActive" method="post" class="d-inline"
-                                      data-confirm-action="@(staff.IsActive ? "deactivate" : "reactivate")" data-staff-name="@staff.FullName">
+                                      data-confirm-action="@(staff.IsActive ? "deactivate" : "reactivate")" data-item-name="@staff.FullName">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@staff.Id" />
                                     <input type="hidden" name="search" value="@Model.Search" />
@@ -294,17 +294,6 @@
                     }
                 });
             }
-
-            document.querySelectorAll('form[data-confirm-action]').forEach(form => {
-                form.addEventListener('submit', event => {
-                    const action = form.dataset.confirmAction;
-                    const staffName = form.dataset.staffName;
-                    const message = action === 'reset-password'
-                        ? `Reset the password for ${staffName}? Their current sessions will be invalidated.`
-                        : `${action === 'deactivate' ? 'Deactivate' : 'Reactivate'} ${staffName}?`;
-                    if (!window.confirm(message)) event.preventDefault();
-                });
-            });
 
             if (@(Model.OpenCreateModal ? "true" : "false"))
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('createStaffModal')).show();

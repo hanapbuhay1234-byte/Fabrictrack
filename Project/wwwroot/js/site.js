@@ -30,6 +30,7 @@
     document.addEventListener("submit", function (e) {
         var form = e.target;
         if (form.tagName !== "FORM" || form.dataset.noSpinner) return;
+        if (form.dataset.confirmAction && form.dataset.confirmed !== "true") return;
         showLoadingBar();
         var submitBtn = form.querySelector('button[type="submit"]');
         if (submitBtn && !submitBtn.classList.contains("is-loading")) {
@@ -125,6 +126,108 @@
             var nameEl = document.getElementById("deleteModalItemName");
             if (form && action) form.setAttribute("action", action);
             if (nameEl) nameEl.textContent = name;
+        });
+    }
+
+    /* ---------------- Styled action confirmations ---------------- */
+    var confirmModalEl = document.getElementById("confirmActionModal");
+    if (confirmModalEl) {
+        var confirmModal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
+        var confirmHeading = document.getElementById("confirmActionHeading");
+        var confirmMessage = document.getElementById("confirmActionMessage");
+        var confirmIcon = document.getElementById("confirmActionIcon");
+        var confirmButton = document.getElementById("confirmActionSubmit");
+        var pendingForm = null;
+        var actionDetails = {
+            "reset-password": function (name) {
+                return {
+                    title: "Reset staff password",
+                    message: "Reset the password for " + name + "? Their current sessions will be invalidated.",
+                    button: "Reset password",
+                    buttonClass: "btn-primary",
+                    iconClass: "bi bi-key-fill text-primary"
+                };
+            },
+            deactivate: function (name) {
+                return {
+                    title: "Deactivate staff account",
+                    message: "Deactivate " + name + "? They will no longer be able to sign in, and their active sessions will be invalidated.",
+                    button: "Deactivate",
+                    buttonClass: "btn-danger",
+                    iconClass: "bi bi-person-x-fill text-danger"
+                };
+            },
+            reactivate: function (name) {
+                return {
+                    title: "Reactivate staff account",
+                    message: "Reactivate " + name + "? They will be able to sign in again.",
+                    button: "Reactivate",
+                    buttonClass: "btn-success",
+                    iconClass: "bi bi-person-check-fill text-success"
+                };
+            },
+            "archive-product": function (name) {
+                return {
+                    title: "Archive product",
+                    message: "Archive " + name + "? Its sales and inventory history will be kept.",
+                    button: "Archive product",
+                    buttonClass: "btn-secondary",
+                    iconClass: "bi bi-archive-fill text-secondary"
+                };
+            },
+            logout: function () {
+                return {
+                    title: "Confirm sign out",
+                    message: "Are you sure you want to log out of FabriTrack?",
+                    button: "Log out",
+                    buttonClass: "btn-primary",
+                    iconClass: "bi bi-box-arrow-right text-primary"
+                };
+            }
+        };
+
+        document.addEventListener("submit", function (event) {
+            var form = event.target;
+            if (!(form instanceof HTMLFormElement) || !form.dataset.confirmAction)
+                return;
+
+            if (form.dataset.confirmed === "true") {
+                delete form.dataset.confirmed;
+                return;
+            }
+
+            var getDetails = actionDetails[form.dataset.confirmAction];
+            if (!getDetails)
+                return;
+
+            event.preventDefault();
+            pendingForm = form;
+            var details = getDetails(form.dataset.itemName || "this account");
+            confirmHeading.textContent = details.title;
+            confirmMessage.textContent = details.message;
+            confirmButton.textContent = details.button;
+            confirmButton.className = "btn " + details.buttonClass;
+            confirmIcon.className = details.iconClass + " me-2";
+            confirmModal.show();
+        });
+
+        confirmButton.addEventListener("click", function () {
+            var form = pendingForm;
+            pendingForm = null;
+            if (!form || !form.isConnected)
+                return;
+
+            form.dataset.confirmed = "true";
+            confirmModalEl.addEventListener("hidden.bs.modal", function onHidden() {
+                confirmModalEl.removeEventListener("hidden.bs.modal", onHidden);
+                if (form.isConnected)
+                    form.requestSubmit();
+            });
+            confirmModal.hide();
+        });
+
+        confirmModalEl.addEventListener("hidden.bs.modal", function () {
+            pendingForm = null;
         });
     }
 

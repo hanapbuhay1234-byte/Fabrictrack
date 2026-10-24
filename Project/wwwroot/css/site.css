@@ -1309,6 +1309,7 @@ table.data-table thead th[data-sort] {
     .form-control:focus { outline: none; box-shadow: 0 0 0 0.25rem rgba(11,122,143,0.12); border-color: var(--ft-accent); }
 
 .toggle-password { border: 1px solid var(--color-border); border-left: none; }
+#passwordInput::-ms-reveal { display: none; }
 
 .btn-auth-submit {
     background: linear-gradient(90deg, var(--ft-primary) 0%, var(--ft-primary-600) 60%, var(--ft-accent) 100%);
