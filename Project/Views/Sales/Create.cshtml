@@ -1,123 +1,343 @@
 @{
     ViewData["Title"] = "New Sale";
-    var fabrics = (IEnumerable<FabriTrack.Models.Fabric>)ViewBag.Fabrics;
+    var fabrics = (IEnumerable<Fabric>)ViewBag.Fabrics;
+    var initialCart = ViewBag.InitialCart as string ?? "[]";
 }
 
-<h2 class="mb-3"><i class="bi bi-cart-plus me-2"></i>New sale</h2>
-
-@if (!fabrics.Any())
-{
-    <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>No fabrics are currently in stock. Add inventory before recording a sale.</div>
-}
+<div class="page-header">
+    <div>
+        <h2><i class="bi bi-cart-plus me-2"></i>New sale</h2>
+        <div class="text-muted small">Choose fabrics, add them to the cart, and review the order before checkout.</div>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-clock-history me-1"></i>Sales history</a>
+</div>
 
 <form asp-action="Create" method="post" id="saleForm">
-    <div asp-validation-summary="All" class="text-danger"></div>
+    <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
 
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="form-card mb-3">
-                <label class="form-label"><i class="bi bi-person me-1"></i>Customer (optional)</label>
-                <select name="customerId" class="form-select" asp-items="ViewBag.Customers">
-                    <option value="">Walk-in customer</option>
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-7 col-xl-8">
+            <div class="pos-toolbar mb-3">
+                <div class="input-group pos-search">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input id="productSearch" type="search" class="form-control" placeholder="Search fabrics by name, color, pattern..." aria-label="Search fabrics" autocomplete="off" />
+                </div>
+                <select id="categoryFilter" class="form-select" aria-label="Filter by category" asp-items="ViewBag.Categories">
+                    <option value="">All categories</option>
                 </select>
             </div>
 
-            <div class="table-container mb-3">
-                <table class="table pos-table" id="lineItemsTable">
-                    <thead>
-                        <tr><th>Fabric</th><th>Available stock</th><th>Price</th><th>Quantity</th><th></th></tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>
-                                <select name="fabricIds" class="form-select fabric-select" onchange="updateRow(this)">
-                                    <option value="">-- Select fabric --</option>
-                                    @foreach (var f in fabrics)
-                                    {
-                                        <option value="@f.FabricId" data-price="@f.PricePerUnit" data-stock="@f.StockQuantity" data-unit="@f.Unit">
-                                            @f.Name (@f.Color) — ₱@f.PricePerUnit.ToString("N2")/@f.Unit
-                                        </option>
-                                    }
-                                </select>
-                            </td>
-                            <td class="stock-cell text-muted">—</td>
-                            <td class="price-cell text-muted">—</td>
-                            <td><input type="number" name="quantities" class="form-control" step="1" min="1" value="1" onchange="updateTotal()" oninput="updateTotal()" /></td>
-                            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)"><i class="bi bi-x-lg"></i></button></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <button type="button" class="btn btn-outline-secondary mb-3" onclick="addRow()"><i class="bi bi-plus-lg me-1"></i>Add line</button>
+            @if (!fabrics.Any())
+            {
+                <div class="pos-empty-state">
+                    <i class="bi bi-box-seam"></i>
+                    <h3>No fabrics found</h3>
+                    <p>There are no fabrics in inventory yet. Add products before recording a sale.</p>
+                </div>
+            }
+            else
+            {
+                <div id="productGrid" class="pos-product-grid">
+                    @foreach (var fabric in fabrics)
+                    {
+                        var imageUrl = Html.NormalizeImageUrl(fabric.ImageUrl);
+                        var categoryName = fabric.Category?.Name ?? "Uncategorized";
+                        var isOutOfStock = fabric.StockQuantity <= 0;
+                        <article class="pos-product-card"
+                                 data-name="@fabric.Name"
+                                 data-color="@fabric.Color"
+                                 data-pattern="@fabric.Pattern"
+                                 data-category="@categoryName"
+                                 data-category-id="@fabric.CategoryId">
+                            <div class="pos-product-image">
+                                @if (!string.IsNullOrWhiteSpace(imageUrl))
+                                {
+                                    <img src="@imageUrl" alt="@fabric.Name" loading="lazy"
+                                         onerror="this.hidden=true; this.nextElementSibling.hidden=false;" />
+                                    <div class="pos-image-fallback" hidden aria-hidden="true"><i class="bi bi-scissors"></i></div>
+                                }
+                                else
+                                {
+                                    <div class="pos-image-fallback" aria-hidden="true"><i class="bi bi-scissors"></i></div>
+                                }
+                                @if (isOutOfStock)
+                                {
+                                    <span class="pos-stock-badge pos-stock-out">Out of stock</span>
+                                }
+                                else if (fabric.StockQuantity <= 5)
+                                {
+                                    <span class="pos-stock-badge pos-stock-low">Low stock</span>
+                                }
+                            </div>
+                            <div class="pos-product-content">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="min-w-0">
+                                        <h3 class="pos-product-name">@fabric.Name</h3>
+                                        <div class="pos-product-meta">
+                                            @if (!string.IsNullOrWhiteSpace(fabric.Color))
+                                            {
+                                                <span>@fabric.Color</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(fabric.Pattern))
+                                            {
+                                                <span>@fabric.Pattern</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <span class="pos-category-chip">@categoryName</span>
+                                </div>
+                                <div class="pos-product-details">
+                                    <div>
+                                        <div class="pos-product-price">₱@fabric.PricePerUnit.ToString("N2")</div>
+                                        <div class="small text-muted">per @fabric.Unit</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="pos-stock-quantity">@fabric.StockQuantity.ToString("0.##") @fabric.Unit</div>
+                                        <div class="small text-muted">available</div>
+                                    </div>
+                                </div>
+                                <button type="button"
+                                        class="btn btn-primary w-100 pos-add-button"
+                                        data-fabric-id="@fabric.FabricId"
+                                        data-name="@fabric.Name"
+                                        data-color="@fabric.Color"
+                                        data-category="@categoryName"
+                                        data-price="@fabric.PricePerUnit.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                        data-stock="@fabric.StockQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                        data-unit="@fabric.Unit"
+                                        disabled="@isOutOfStock">
+                                    <i class="bi bi-plus-lg me-1"></i>Add to order
+                                </button>
+                            </div>
+                        </article>
+                    }
+                </div>
+                <div id="noProductsMessage" class="pos-empty-state mt-3" hidden>
+                    <i class="bi bi-search"></i>
+                    <h3>No matching fabrics</h3>
+                    <p>Try a different search or category.</p>
+                </div>
+            }
         </div>
 
-        <div class="col-lg-4">
-            <div class="form-card sticky-summary mb-3">
-                <div class="d-flex justify-content-between">
-                    <span class="fw-semibold">Estimated total</span>
-                    <span class="fw-bold" id="estimatedTotal" style="color: var(--ft-primary);">₱0.00</span>
+        <div class="col-lg-5 col-xl-4">
+            <section class="pos-cart-card" aria-labelledby="orderHeading">
+                <div class="pos-cart-header">
+                    <div>
+                        <h3 id="orderHeading"><i class="bi bi-basket2 me-2"></i>Current order</h3>
+                        <div id="cartItemCount" class="small text-muted">0 items</div>
+                    </div>
+                    <button id="clearCartButton" type="button" class="btn btn-sm btn-outline-secondary" disabled>Clear</button>
                 </div>
-                <div class="small text-muted mt-1">Final total is calculated on the server at checkout.</div>
-                <div class="mt-3 d-grid">
-                    <button type="submit" class="btn btn-primary btn-lg" @(!fabrics.Any() ? "disabled" : "")><i class="bi bi-check-circle me-1"></i>Complete sale</button>
-                    <a asp-action="Index" class="btn btn-secondary mt-2"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+
+                <div class="pos-customer-field">
+                    <label for="customerId" class="form-label">Customer <span class="text-muted fw-normal">(optional)</span></label>
+                    <select id="customerId" name="customerId" class="form-select" asp-items="ViewBag.Customers">
+                        <option value="">Walk-in customer</option>
+                    </select>
                 </div>
-            </div>
+
+                <div id="cartLines" class="pos-cart-lines" aria-live="polite"></div>
+                <div id="emptyCartMessage" class="pos-cart-empty">
+                    <i class="bi bi-basket"></i>
+                    <div class="fw-semibold mt-2">Your order is empty</div>
+                    <div class="small text-muted">Add a fabric from the catalog to get started.</div>
+                </div>
+
+                <div class="pos-cart-summary">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Estimated total</span>
+                        <strong id="estimatedTotal">₱0.00</strong>
+                    </div>
+                    <div class="small text-muted mt-1">Final prices and stock are verified at checkout.</div>
+                    <button id="completeSaleButton" type="submit" class="btn btn-primary btn-lg w-100 mt-3" disabled>
+                        <i class="bi bi-check-circle me-1"></i>Complete sale
+                    </button>
+                    <a asp-action="Index" class="btn btn-link w-100 mt-1 text-decoration-none">Cancel</a>
+                </div>
+            </section>
         </div>
     </div>
 </form>
 
+<div id="initialCartData" data-cart="@initialCart" hidden></div>
+
 @section Scripts {
     <script>
-        function updateRow(select) {
-            var row = select.closest('tr');
-            var opt = select.options[select.selectedIndex];
-            row.querySelector('.price-cell').textContent = opt.dataset.price ? '₱' + parseFloat(opt.dataset.price).toFixed(2) : '—';
-            row.querySelector('.stock-cell').textContent = opt.dataset.stock ? parseFloat(opt.dataset.stock).toFixed(0) + ' ' + opt.dataset.unit : '—';
-            updateTotal();
-        }
-        function addRow() {
-            var table = document.getElementById('lineItemsTable').getElementsByTagName('tbody')[0];
-            var newRow = table.rows[0].cloneNode(true);
-            newRow.querySelectorAll('select, input').forEach(el => {
-                if (el.tagName === 'SELECT') {
-                    el.selectedIndex = 0;
-                    el.onchange = function() { updateRow(this); };
+        (() => {
+            const cart = new Map();
+            const cartLines = document.getElementById('cartLines');
+            const emptyCartMessage = document.getElementById('emptyCartMessage');
+            const countElement = document.getElementById('cartItemCount');
+            const totalElement = document.getElementById('estimatedTotal');
+            const completeButton = document.getElementById('completeSaleButton');
+            const clearButton = document.getElementById('clearCartButton');
+            const currency = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
+            const quantityFormatter = new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 });
+
+            function formatQuantity(value) {
+                return quantityFormatter.format(value);
+            }
+
+            function createElement(tag, className, text) {
+                const element = document.createElement(tag);
+                if (className) element.className = className;
+                if (text !== undefined) element.textContent = text;
+                return element;
+            }
+
+            function removeItem(id) {
+                cart.delete(id);
+                renderCart();
+            }
+
+            function updateQuantity(id, value) {
+                const item = cart.get(id);
+                if (!item) return;
+                const quantity = Math.min(item.stock, Math.max(0.01, Number(value) || 0.01));
+                item.quantity = Math.round(quantity * 100) / 100;
+                renderCart();
+            }
+
+            function renderCart() {
+                cartLines.replaceChildren();
+                let total = 0;
+
+                for (const item of cart.values()) {
+                    total += item.price * item.quantity;
+
+                    const line = createElement('article', 'pos-cart-line');
+                    const details = createElement('div', 'pos-cart-line-main');
+                    const titleRow = createElement('div', 'd-flex justify-content-between gap-2');
+                    const info = createElement('div', 'min-w-0');
+                    info.append(
+                        createElement('div', 'pos-cart-item-name', item.name),
+                        createElement('div', 'small text-muted', `${currency.format(item.price)} / ${item.unit}`)
+                    );
+                    const subtotal = createElement('strong', 'pos-cart-subtotal', currency.format(item.price * item.quantity));
+                    titleRow.append(info, subtotal);
+
+                    const controls = createElement('div', 'pos-cart-controls');
+                    const quantityGroup = createElement('div', 'pos-quantity-control');
+                    const decrease = createElement('button', 'btn btn-sm btn-outline-secondary', '−');
+                    decrease.type = 'button';
+                    decrease.setAttribute('aria-label', `Decrease ${item.name} quantity`);
+                    decrease.addEventListener('click', () => {
+                        if (item.quantity <= 0.5) removeItem(item.id);
+                        else updateQuantity(item.id, item.quantity - 0.5);
+                    });
+                    const quantityInput = document.createElement('input');
+                    quantityInput.type = 'number';
+                    quantityInput.className = 'form-control form-control-sm';
+                    quantityInput.name = 'quantities';
+                    quantityInput.min = '0.01';
+                    quantityInput.max = String(item.stock);
+                    quantityInput.step = 'any';
+                    quantityInput.value = String(item.quantity);
+                    quantityInput.setAttribute('aria-label', `${item.name} quantity in ${item.unit}`);
+                    quantityInput.addEventListener('change', () => updateQuantity(item.id, quantityInput.value));
+                    const increase = createElement('button', 'btn btn-sm btn-outline-secondary', '+');
+                    increase.type = 'button';
+                    increase.disabled = item.quantity >= item.stock;
+                    increase.setAttribute('aria-label', `Increase ${item.name} quantity`);
+                    increase.addEventListener('click', () => updateQuantity(item.id, Math.min(item.stock, item.quantity + 0.5)));
+                    quantityGroup.append(decrease, quantityInput, increase);
+
+                    const stock = createElement('span', 'small text-muted', `${formatQuantity(item.stock)} ${item.unit} available`);
+                    const remove = createElement('button', 'btn btn-sm btn-link text-danger p-0', 'Remove');
+                    remove.type = 'button';
+                    remove.addEventListener('click', () => removeItem(item.id));
+                    controls.append(quantityGroup, stock, remove);
+
+                    const idInput = document.createElement('input');
+                    idInput.type = 'hidden';
+                    idInput.name = 'fabricIds';
+                    idInput.value = String(item.id);
+                    line.append(titleRow, controls, idInput);
+                    cartLines.append(line);
                 }
-                if (el.tagName === 'INPUT') {
-                    el.value = 1;
-                    el.onchange = function() { updateTotal(); };
-                    el.oninput = function() { updateTotal(); };
-                }
+
+                countElement.textContent = `${cart.size} ${cart.size === 1 ? 'fabric' : 'fabrics'} in order`;
+                totalElement.textContent = currency.format(total);
+                emptyCartMessage.hidden = cart.size > 0;
+                completeButton.disabled = cart.size === 0;
+                clearButton.disabled = cart.size === 0;
+            }
+
+            document.querySelectorAll('.pos-add-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const id = Number(button.dataset.fabricId);
+                    const existing = cart.get(id);
+                    if (existing) {
+                        existing.quantity = Math.min(existing.stock, Math.round((existing.quantity + 0.5) * 100) / 100);
+                    } else {
+                        const stock = Number(button.dataset.stock);
+                        cart.set(id, {
+                            id,
+                            name: button.dataset.name,
+                            price: Number(button.dataset.price),
+                            stock,
+                            unit: button.dataset.unit,
+                            quantity: Math.min(stock, 0.5)
+                        });
+                    }
+                    renderCart();
+                });
             });
-            var removeBtn = newRow.querySelector('.btn-outline-danger');
-            if (removeBtn) {
-                removeBtn.onclick = function() { removeRow(this); };
+
+            clearButton.addEventListener('click', () => {
+                cart.clear();
+                renderCart();
+            });
+
+            const searchInput = document.getElementById('productSearch');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const noProductsMessage = document.getElementById('noProductsMessage');
+            function filterProducts() {
+                const search = searchInput.value.trim().toLocaleLowerCase();
+                const categoryId = categoryFilter.value;
+                let visibleCount = 0;
+
+                document.querySelectorAll('.pos-product-card').forEach(card => {
+                    const searchableText = `${card.dataset.name} ${card.dataset.color} ${card.dataset.pattern} ${card.dataset.category}`.toLocaleLowerCase();
+                    const visible = searchableText.includes(search) && (!categoryId || card.dataset.categoryId === categoryId);
+                    card.hidden = !visible;
+                    if (visible) visibleCount++;
+                });
+
+                if (noProductsMessage) noProductsMessage.hidden = visibleCount > 0;
             }
-            newRow.querySelector('.price-cell').textContent = '—';
-            newRow.querySelector('.stock-cell').textContent = '—';
-            table.appendChild(newRow);
-            updateTotal();
-        }
-        function removeRow(btn) {
-            var table = document.getElementById('lineItemsTable').getElementsByTagName('tbody')[0];
-            if (table.rows.length > 1) btn.closest('tr').remove();
-            updateTotal();
-        }
-        function updateTotal() {
-            var rows = document.getElementById('lineItemsTable').getElementsByTagName('tbody')[0].rows;
-            var total = 0;
-            for (var i = 0; i < rows.length; i++) {
-                var select = rows[i].querySelector('.fabric-select');
-                var opt = select.options[select.selectedIndex];
-                var qtyInput = rows[i].querySelector('input[name="quantities"]');
-                var price = opt && opt.dataset.price ? parseFloat(opt.dataset.price) : 0;
-                var qty = qtyInput && qtyInput.value ? parseInt(qtyInput.value, 10) : 0;
-                if (!isNaN(price) && !isNaN(qty)) total += price * qty;
+            searchInput.addEventListener('input', filterProducts);
+            categoryFilter.addEventListener('change', filterProducts);
+
+            try {
+                const initialCart = JSON.parse(document.getElementById('initialCartData').dataset.cart);
+                for (const item of initialCart) {
+                    const button = document.querySelector(`.pos-add-button[data-fabric-id="${item.fabricId}"]`);
+                    if (!button || Number(button.dataset.stock) <= 0) continue;
+                    const id = Number(item.fabricId);
+                    const stock = Number(button.dataset.stock);
+                    const existing = cart.get(id);
+                    const quantity = Number(item.quantity);
+                    if (!Number.isFinite(quantity) || quantity <= 0) continue;
+                    if (existing) existing.quantity = Math.min(stock, existing.quantity + quantity);
+                    else {
+                        cart.set(id, {
+                            id,
+                            name: button.dataset.name,
+                            price: Number(button.dataset.price),
+                            stock,
+                            unit: button.dataset.unit,
+                            quantity: Math.min(stock, quantity)
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Could not restore the submitted order.', error);
             }
-            document.getElementById('estimatedTotal').textContent = '₱' + total.toFixed(2);
-        }
-        document.addEventListener('DOMContentLoaded', updateTotal);
+
+            renderCart();
+            filterProducts();
+        })();
     </script>
 }

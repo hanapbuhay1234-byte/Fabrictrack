@@ -48,21 +48,60 @@ namespace FabriTrack.Controllers
 
         public async Task<IActionResult> Create()
         {
-            ViewBag.Fabrics = await _context.Fabrics.Where(f => f.StockQuantity > 0).ToListAsync();
-            ViewBag.Customers = new SelectList(await _context.Customers.ToListAsync(), "CustomerId", "FullName");
+            await PopulateCreateViewDataAsync();
             return View();
         }
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(int? customerId, List<int> fabricIds, List<decimal> quantities)
         {
-            if (fabricIds == null || quantities == null || fabricIds.Count == 0 || fabricIds.Count != quantities.Count)
+            if (fabricIds.Count == 0 || fabricIds.Count != quantities.Count)
             {
                 ModelState.AddModelError("", "Please add at least one valid fabric line item.");
-                ViewBag.Fabrics = await _context.Fabrics.Where(f => f.StockQuantity > 0).ToListAsync();
-                ViewBag.Customers = new SelectList(await _context.Customers.ToListAsync(), "CustomerId", "FullName");
+            }
+
+            if (fabricIds.Count == quantities.Count)
+            {
+                for (var i = 0; i < quantities.Count; i++)
+                {
+                    if (quantities[i] <= 0)
+                        ModelState.AddModelError("", "Each item quantity must be greater than zero.");
+                }
+
+                if (fabricIds.Count > 0 && quantities.All(quantity => quantity > 0))
+                {
+                    var requestedQuantities = Enumerable.Range(0, fabricIds.Count)
+                        .GroupBy(index => fabricIds[index])
+                        .ToDictionary(group => group.Key, group => group.Sum(index => quantities[index]));
+                    var fabrics = await _context.Fabrics
+                        .Where(fabric => requestedQuantities.Keys.Contains(fabric.FabricId))
+                        .ToDictionaryAsync(fabric => fabric.FabricId);
+
+                    foreach (var (fabricId, requestedQuantity) in requestedQuantities)
+                    {
+                        if (!fabrics.TryGetValue(fabricId, out var fabric))
+                        {
+                            ModelState.AddModelError("", "One of the selected fabrics could not be found. Refresh the page and try again.");
+                            continue;
+                        }
+
+                        if (fabric.StockQuantity < requestedQuantity)
+                            ModelState.AddModelError("", $"Not enough stock for '{fabric.Name}'. Available: {fabric.StockQuantity:0.##} {fabric.Unit}.");
+                    }
+                }
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.InitialCart = System.Text.Json.JsonSerializer.Serialize(
+                    fabricIds.Zip(quantities, (fabricId, quantity) => new { fabricId, quantity }));
+                await PopulateCreateViewDataAsync();
                 return View();
             }
+
+            var itemQuantities = Enumerable.Range(0, fabricIds.Count)
+                .GroupBy(index => fabricIds[index])
+                .ToDictionary(group => group.Key, group => group.Sum(index => quantities[index]));
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -76,37 +115,25 @@ namespace FabriTrack.Controllers
                 _context.Sales.Add(sale);
 
                 decimal total = 0;
-                for (int i = 0; i < fabricIds.Count; i++)
+                foreach (var (fabricId, quantity) in itemQuantities)
                 {
-                    if (quantities[i] <= 0) continue;
-
-                    var fabric = await _context.Fabrics.FindAsync(fabricIds[i]);
-                    if (fabric == null) continue;
-
-                    if (fabric.StockQuantity < quantities[i])
+                    var fabric = await _context.Fabrics.FindAsync(fabricId);
+                    if (fabric == null)
                     {
-                        ModelState.AddModelError("", $"Not enough stock for '{fabric.Name}'. Available: {fabric.StockQuantity} {fabric.Unit}.");
-                        continue;
+                        throw new InvalidOperationException($"Fabric {fabricId} was not found during checkout.");
                     }
 
-                    fabric.StockQuantity -= quantities[i];
+                    fabric.StockQuantity -= quantity;
 
                     var line = new SaleItem
                     {
                         Sale = sale,
                         FabricId = fabric.FabricId,
-                        Quantity = quantities[i],
+                        Quantity = quantity,
                         UnitPrice = fabric.PricePerUnit
                     };
                     sale.SaleItems.Add(line);
                     total += line.Subtotal;
-                }
-
-                if (!ModelState.IsValid)
-                {
-                    ViewBag.Fabrics = await _context.Fabrics.Where(f => f.StockQuantity > 0).ToListAsync();
-                    ViewBag.Customers = new SelectList(await _context.Customers.ToListAsync(), "CustomerId", "FullName");
-                    return View();
                 }
 
                 sale.TotalAmount = total;
@@ -121,6 +148,22 @@ namespace FabriTrack.Controllers
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private async Task PopulateCreateViewDataAsync()
+        {
+            ViewBag.Fabrics = await _context.Fabrics
+                .Include(fabric => fabric.Category)
+                .OrderBy(fabric => fabric.Name)
+                .ToListAsync();
+            ViewBag.Categories = new SelectList(
+                await _context.Categories.OrderBy(category => category.Name).ToListAsync(),
+                "CategoryId",
+                "Name");
+            ViewBag.Customers = new SelectList(
+                await _context.Customers.OrderBy(customer => customer.FullName).ToListAsync(),
+                "CustomerId",
+                "FullName");
         }
     }
 }
