@@ -138,9 +138,14 @@
 
                 <div class="pos-customer-field">
                     <label for="customerId" class="form-label">Customer <span class="text-muted fw-normal">(optional)</span></label>
-                    <select id="customerId" name="customerId" class="form-select" asp-items="ViewBag.Customers">
-                        <option value="">Walk-in customer</option>
-                    </select>
+                    <div class="input-group">
+                        <select id="customerId" name="customerId" class="form-select" asp-items="ViewBag.Customers">
+                            <option value="">Walk-in customer</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#quickCustomerModal">
+                            <i class="bi bi-person-plus me-1" aria-hidden="true"></i>New
+                        </button>
+                    </div>
                 </div>
 
                 <div id="cartLines" class="pos-cart-lines" aria-live="polite"></div>
@@ -165,6 +170,44 @@
         </div>
     </div>
 </form>
+
+<div class="modal fade" id="quickCustomerModal" tabindex="-1" aria-labelledby="quickCustomerTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="quickCustomerForm" asp-action="CreateCustomer" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title fs-5" id="quickCustomerTitle"><i class="bi bi-person-plus me-2"></i>Add customer</h2>
+                        <p class="small text-muted mb-0">Add a customer without leaving the current order.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="quickCustomerError" class="alert alert-danger" role="alert" hidden></div>
+                    <div class="mb-3">
+                        <label for="quickCustomerName" class="form-label">Full name <span class="text-danger">*</span></label>
+                        <input id="quickCustomerName" name="FullName" class="form-control" maxlength="150" autocomplete="name" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="quickCustomerPhone" class="form-label">Phone number <span class="text-muted">(optional)</span></label>
+                        <input id="quickCustomerPhone" name="ContactNumber" class="form-control" maxlength="20" type="tel" autocomplete="tel" />
+                    </div>
+                    <div>
+                        <label for="quickCustomerEmail" class="form-label">Email <span class="text-muted">(optional)</span></label>
+                        <input id="quickCustomerEmail" name="Email" class="form-control" maxlength="150" type="email" autocomplete="email" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="quickCustomerSave" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Save and select
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="saleReviewModal" tabindex="-1" aria-labelledby="saleReviewTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -231,6 +274,12 @@
             const reviewCustomer = document.getElementById('reviewCustomer');
             const reviewTotal = document.getElementById('reviewTotal');
             const confirmSaleButton = document.getElementById('confirmSaleButton');
+            const quickCustomerForm = document.getElementById('quickCustomerForm');
+            const quickCustomerModalElement = document.getElementById('quickCustomerModal');
+            const quickCustomerModal = new bootstrap.Modal(quickCustomerModalElement);
+            const quickCustomerError = document.getElementById('quickCustomerError');
+            const quickCustomerSave = document.getElementById('quickCustomerSave');
+            const customerSelect = document.getElementById('customerId');
             const currency = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
             const quantityFormatter = new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 });
             let checkoutConfirmed = false;
@@ -459,6 +508,48 @@
                 checkoutConfirmed = true;
                 saleForm.requestSubmit();
                 if (saleForm.dataset.submitting === 'true') reviewModal.hide();
+            });
+
+            quickCustomerForm.addEventListener('submit', async event => {
+                event.preventDefault();
+                if (!quickCustomerForm.reportValidity()) return;
+
+                quickCustomerSave.disabled = true;
+                quickCustomerSave.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving...';
+                quickCustomerError.hidden = true;
+                quickCustomerError.textContent = '';
+
+                try {
+                    const response = await fetch(quickCustomerForm.action, {
+                        method: 'POST',
+                        body: new FormData(quickCustomerForm),
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        const errors = Array.isArray(result.errors) ? result.errors : ['Could not save the customer. Please check the details and try again.'];
+                        quickCustomerError.textContent = errors.join(' ');
+                        quickCustomerError.hidden = false;
+                        return;
+                    }
+
+                    customerSelect.add(new Option(result.fullName, result.customerId, true, true));
+                    quickCustomerForm.reset();
+                    quickCustomerModal.hide();
+                } catch (error) {
+                    console.error('Could not create the customer from the sale form.', error);
+                    quickCustomerError.textContent = 'The customer could not be saved due to a connection error. Please try again.';
+                    quickCustomerError.hidden = false;
+                } finally {
+                    quickCustomerSave.disabled = false;
+                    quickCustomerSave.innerHTML = '<i class="bi bi-check-lg me-1" aria-hidden="true"></i>Save and select';
+                }
+            });
+
+            quickCustomerModalElement.addEventListener('show.bs.modal', () => {
+                quickCustomerError.hidden = true;
+                quickCustomerError.textContent = '';
+                document.getElementById('quickCustomerName').focus();
             });
 
             reviewModalElement.addEventListener('hidden.bs.modal', () => {

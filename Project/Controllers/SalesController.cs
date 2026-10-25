@@ -266,6 +266,45 @@ namespace FabriTrack.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateCustomer(QuickCustomerCreateViewModel input)
+        {
+            input.FullName = input.FullName?.Trim() ?? string.Empty;
+            input.ContactNumber = string.IsNullOrWhiteSpace(input.ContactNumber)
+                ? null
+                : input.ContactNumber.Trim();
+            input.Email = string.IsNullOrWhiteSpace(input.Email)
+                ? null
+                : input.Email.Trim();
+
+            ModelState.Clear();
+            if (!TryValidateModel(input))
+            {
+                var errors = ModelState.Values
+                    .SelectMany(value => value.Errors)
+                    .Select(error => error.ErrorMessage)
+                    .Where(message => !string.IsNullOrWhiteSpace(message))
+                    .Distinct()
+                    .ToList();
+                return BadRequest(new { errors });
+            }
+
+            var customer = new Customer
+            {
+                FullName = input.FullName,
+                ContactNumber = input.ContactNumber,
+                Email = input.Email
+            };
+            _context.Customers.Add(customer);
+            await _context.SaveChangesAsync();
+
+            return Json(new
+            {
+                customerId = customer.CustomerId,
+                fullName = customer.FullName
+            });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(int? customerId, List<int> fabricIds, List<decimal> quantities)
         {
             if (fabricIds.Count == 0 || fabricIds.Count != quantities.Count)

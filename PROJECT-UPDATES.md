@@ -16,6 +16,7 @@ This file tracks the features and project changes implemented during the current
 ### Sales — POS order entry
 
 - Replaced the fabric dropdown-and-table order workflow with a product catalog and cart.
+- Added quick customer creation from the Current order customer selector; successful saves select the new customer without clearing the cart, and validation errors stay in the modal.
 - Added searchable fabric cards with image fallback, color/pattern, category, price, and available stock.
 - Added category filtering and visible low-stock/out-of-stock indicators.
 - Added cart controls for decimal quantities, using 0.5-unit increments for add/remove actions.
