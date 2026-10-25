@@ -24,6 +24,8 @@ git clone <repo-url>
 cd <project-folder>
 ```
 
+If you already have a local checkout, pull the latest shared changes before setting up or running the application. The current application code and its migrations are needed to receive the recent feature and database updates; reading `PROJECT-UPDATES.md` alone does not apply those updates.
+
 ---
 
 ## 3. Create the database
@@ -65,18 +67,18 @@ Open `Project\appsettings.json` and set **your own** MySQL password:
 
 ---
 
-## 5. Apply application updates to the imported database
+## 5. Apply application updates to the database
 
-The checked-in SQL dump contains the existing schema and migration history. After importing it, back up the database, then apply any newer application migrations. The current application includes migrations for Product Inventory, audited sale voiding, staff account activation and first-login password changes, user profile photos, centralized audit logs, saved sale-processor names, and Login Activity. Applying migrations is required before starting the updated application:
+The checked-in SQL dump is the starting database; it may not include schema updates made after that dump was exported. After importing it, back up the database, then apply every pending migration from the latest project code. The current application includes migrations for Product Inventory, audited sale voiding, staff account activation and first-login password changes, user profile photos, centralized audit logs, saved sale-processor names, and Login Activity. Applying migrations is required before starting the updated application:
 
 ```powershell
 dotnet tool install --global dotnet-ef --version 8.0.0
 dotnet ef database update --project .\Project\Project.csproj
 ```
 
-If `dotnet-ef` is already installed, skip the install command. These updates preserve existing records and do not drop or recreate the imported tables. Login Activity keeps the most recent 90 days of recorded events. Staff accounts are now created by an administrator; public self-registration is disabled. Profile photos are stored under `Project\App_Data\ProfilePhotos`, outside the public web folder. Ensure the application service account can write to that folder and include it in your database/file backups if you want to preserve uploaded photos.
+If `dotnet-ef` is already installed, skip the install command. Teammates who already have a local database should **not** import the dump again just to get the new features: back up their database, pull the latest project code, and run `dotnet ef database update --project .\Project\Project.csproj`. EF applies migrations that have not yet been recorded in that database; the `PROJECT-UPDATES.md` entries do not need to be run individually. These updates preserve existing records and do not drop or recreate the imported tables. Login Activity keeps the most recent 90 days of recorded events. Staff accounts are now created by an administrator; public self-registration is disabled. Profile photos are stored under `Project\App_Data\ProfilePhotos`, outside the public web folder. Ensure the application service account can write to that folder and include it in your database/file backups if you want to preserve uploaded photos.
 
-Do not run the migration command before importing the provided SQL dump. If you are working with a database that contains valuable data, always take a backup before applying schema changes.
+For a fresh setup, import the provided SQL dump before running the migration command. For an existing local database, keep the existing data and apply pending migrations in place. Always back up a database with valuable data before applying schema changes.
 
 ---
 

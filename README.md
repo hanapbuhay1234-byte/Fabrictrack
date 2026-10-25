@@ -28,9 +28,18 @@ FabriTrack is a fabric inventory and sales management web application built with
 
 ## Setup and run
 
-See the detailed [database and setup guide](Project/Database/SETUP.md) for preparing MySQL, importing the supplied database, configuring the connection string, applying migrations, and troubleshooting.
+Teammates starting from an older version should first get the latest project code from the shared repository. `PROJECT-UPDATES.md` is a feature history; you do not need to apply its entries manually. The latest project migrations contain the database updates required by the current code.
 
-From the repository root, restore, build, and run the application:
+1. Clone the repository, or pull the latest changes in your existing checkout.
+2. Configure a local MySQL 8.0 database and `ConnectionStrings:DefaultConnection`.
+3. For a fresh local database, import `Project/Database/ken_backup.sql`. If you already have a database with data to keep, do not re-import the dump.
+4. Back up any existing database and, from the repository root, apply all pending migrations:
+
+   ```powershell
+   dotnet ef database update --project .\Project\Project.csproj
+   ```
+
+5. Restore, build, and run the current code:
 
 ```powershell
 dotnet restore
@@ -59,14 +68,16 @@ Access restrictions are enforced by the application, not only by hiding navigati
 
 ## Database migrations
 
-Back up any database with data you want to keep before applying migrations. From the repository root, install the matching EF command-line tool if needed and apply pending migrations:
+For a fresh setup, import the supplied SQL dump first. If you already have a local database from the older version, keep that database and apply the migrations from the latest code; do not re-import the dump unless you intend to replace the local data. Back up any database with data you want to keep before applying migrations.
+
+From the repository root, install the matching EF command-line tool if needed and apply all pending migrations:
 
 ```powershell
 dotnet tool install --global dotnet-ef --version 8.0.0
 dotnet ef database update --project .\Project\Project.csproj
 ```
 
-If `dotnet-ef` version 8.0.0 is already installed, skip the install command. Do not import the supplied SQL dump over a database containing data you need; importing can replace existing database contents.
+If `dotnet-ef` version 8.0.0 is already installed, skip the install command. EF applies migrations that are not yet recorded in the database, bringing it to the schema expected by the latest code. The `PROJECT-UPDATES.md` entries do not need to be run individually. Do not import the supplied SQL dump over a database containing data you need; importing can replace existing database contents.
 
 ## Useful links
 
