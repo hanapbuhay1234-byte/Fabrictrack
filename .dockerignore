@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.git/
+.vs/
+**/*.user
+**/*.userosscache
+.env
+.env.*
+Project/App_Data/ProfilePhotos/
+Project/Database/ken_backup.sql

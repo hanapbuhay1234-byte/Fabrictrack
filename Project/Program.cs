@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using FabriTrack.Data;
 using FabriTrack.Models;
 using Microsoft.AspNetCore.Identity;
@@ -8,8 +9,23 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Connect the app to the database where its data and user accounts are stored.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("ConnectionStrings:DefaultConnection must be configured.");
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+
+if (builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+}
 
 // Set the rules for passwords, email addresses, sign-in, and user roles.
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
@@ -35,6 +51,11 @@ builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
+
+if (builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
+{
+    app.UseForwardedHeaders();
+}
 
 // Set up the required roles and starting data before the app begins serving pages.
 using (var scope = app.Services.CreateScope())

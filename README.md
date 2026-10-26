@@ -79,6 +79,10 @@ dotnet ef database update --project .\Project\Project.csproj
 
 If `dotnet-ef` version 8.0.0 is already installed, skip the install command. EF applies migrations that are not yet recorded in the database, bringing it to the schema expected by the latest code. The `PROJECT-UPDATES.md` entries do not need to be run individually. Do not import the supplied SQL dump over a database containing data you need; importing can replace existing database contents.
 
+## Online demonstration deployment
+
+For a free Render + Aiven demonstration deployment, follow the [deployment guide](docs/deployment-render-aiven.md). Production deployments require both `Seed:AdminEmail` and `Seed:AdminPassword` to be set; the development-only fallback administrator is not used outside Development.
+
 ## Useful links
 
 - [Detailed setup guide](Project/Database/SETUP.md)

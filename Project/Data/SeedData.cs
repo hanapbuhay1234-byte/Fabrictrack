@@ -8,6 +8,21 @@ namespace FabriTrack.Data
     {
         public static async Task InitializeAsync(IServiceProvider services)
         {
+            var config = services.GetRequiredService<IConfiguration>();
+            var environment = services.GetRequiredService<IWebHostEnvironment>();
+            var adminEmail = config["Seed:AdminEmail"];
+            var adminPassword = config["Seed:AdminPassword"];
+
+            if (!environment.IsDevelopment() &&
+                (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword)))
+            {
+                throw new InvalidOperationException(
+                    "Seed:AdminEmail and Seed:AdminPassword must be configured outside Development.");
+            }
+
+            adminEmail = string.IsNullOrWhiteSpace(adminEmail) ? "admin@local" : adminEmail;
+            adminPassword = string.IsNullOrWhiteSpace(adminPassword) ? "ChangeMe123!" : adminPassword;
+
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
@@ -19,24 +34,6 @@ namespace FabriTrack.Data
                     if (!roleResult.Succeeded)
                         throw new InvalidOperationException($"Could not create the '{role}' role: {string.Join("; ", roleResult.Errors.Select(error => error.Description))}");
                 }
-            }
-
-            var config = services.GetRequiredService<IConfiguration>();
-
-            // Read seeded admin credentials from configuration (user-secrets / env).
-            // Do NOT store real credentials in source control. If config values are
-            // not provided, fall back to a safe development placeholder.
-            var adminEmail = config["Seed:AdminEmail"];
-            var adminPassword = config["Seed:AdminPassword"];
-
-            if (string.IsNullOrWhiteSpace(adminEmail))
-            {
-                adminEmail = "admin@local"; // fallback for dev only
-            }
-
-            if (string.IsNullOrWhiteSpace(adminPassword))
-            {
-                adminPassword = "ChangeMe123!"; // fallback for dev only
             }
 
             var admin = await userManager.FindByEmailAsync(adminEmail);
