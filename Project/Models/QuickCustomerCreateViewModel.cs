@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FabriTrack.Models
 {
+    // Holds the details needed to add a customer while making a sale.
     public class QuickCustomerCreateViewModel
     {
         [Required, StringLength(150)]

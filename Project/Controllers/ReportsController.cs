@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FabriTrack.Controllers
 {
+    // Shows and downloads sales reports for admins. Voided sales are left out.
     [Authorize(Roles = Roles.Admin)]
     public class ReportsController : Controller
     {
@@ -15,7 +16,7 @@ namespace FabriTrack.Controllers
 
         public ReportsController(ApplicationDbContext context) => _context = context;
 
-        // GET: /Reports?filterType=day|week|month|range&date=yyyy-MM-dd&start=yyyy-MM-dd&end=yyyy-MM-dd
+        // The report can cover a day, week, month, or a date range chosen by the user.
         public async Task<IActionResult> Index(string? filterType, DateTime? date, DateTime? start, DateTime? end)
         {
             var model = new SalesReportViewModel
@@ -38,6 +39,7 @@ namespace FabriTrack.Controllers
             model.PeriodLabel = GetPeriodLabel(normalizedFilter, periodStart, periodEnd);
             model.HasValidPeriod = true;
 
+            // Compare the selected dates with the same number of dates just before them.
             var previousPeriodLength = periodEnd - periodStart;
             var previousPeriodStart = periodStart - previousPeriodLength;
             var currentSales = _context.Sales
@@ -238,6 +240,7 @@ namespace FabriTrack.Controllers
             out DateTime periodEnd,
             out string normalizedFilter)
         {
+            // Turn the selected option into start and end dates for the report search.
             normalizedFilter = string.IsNullOrWhiteSpace(filterType)
                 ? "day"
                 : filterType.Trim().ToLowerInvariant();
@@ -297,6 +300,7 @@ namespace FabriTrack.Controllers
             DateTime periodEnd,
             out string granularity)
         {
+            // Use wider chart groups for longer ranges and show days with no sales as zero.
             var periodDays = (periodEnd - periodStart).Days;
             granularity = periodDays <= 31 ? "day" : periodDays <= 180 ? "week" : "month";
             var daily = dailyTrend.ToDictionary(day => day.Date.Date);

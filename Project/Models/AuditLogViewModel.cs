@@ -1,5 +1,6 @@
 namespace FabriTrack.Models
 {
+    // Holds the audit search filters, page details, and results shown on screen.
     public class AuditLogViewModel
     {
         public string? Search { get; set; }
@@ -11,6 +12,7 @@ namespace FabriTrack.Models
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 25;
         public int TotalRecords { get; set; }
+        // Works out how many pages are needed for the results.
         public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalRecords / (double)PageSize));
         public bool HasPreviousPage => Page > 1;
         public bool HasNextPage => Page < TotalPages;

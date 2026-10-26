@@ -9,6 +9,7 @@ using System.Security.Claims;
 
 namespace FabriTrack.Controllers
 {
+    // Shows and downloads the change history. Staff only see changes they made.
     [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class AuditLogsController : Controller
     {
@@ -29,6 +30,7 @@ namespace FabriTrack.Controllers
             DateTime? endDate,
             int page = 1)
         {
+            // Prepare the filters once so the totals and list use the same search.
             var model = new AuditLogViewModel
             {
                 Search = search?.Trim(),
@@ -115,6 +117,7 @@ namespace FabriTrack.Controllers
         private IQueryable<AuditLog> FilterLogs(AuditLogViewModel filters)
         {
             var query = _context.AuditLogs.AsNoTracking();
+            // Staff can see only their own entries.
             if (!User.IsInRole(Roles.Admin))
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -175,6 +178,7 @@ namespace FabriTrack.Controllers
 
         private static string CsvField(string value)
         {
+            // Format each value safely so spreadsheets do not treat it as a formula.
             if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r')
                 value = $"'{value}";
             return $"\"{value.Replace("\"", "\"\"")}\"";

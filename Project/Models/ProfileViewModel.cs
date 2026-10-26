@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace FabriTrack.Models
 {
+    // Holds the profile details a user can update and their current photo information.
     public class ProfileViewModel
     {
         [Required, StringLength(100)]
@@ -19,6 +20,7 @@ namespace FabriTrack.Models
 
         [DataType(DataType.Password)]
         [Display(Name = "Current password")]
+        // The user must enter this when changing their sign-in email.
         public string? CurrentPassword { get; set; }
 
         [Display(Name = "Profile photo")]

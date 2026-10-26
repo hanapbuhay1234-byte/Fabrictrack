@@ -7,6 +7,7 @@ using System.Security.Claims;
 
 namespace FabriTrack.Controllers
 {
+    // Lets staff and admins manage customers and view the sales they are allowed to see.
     [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class CustomersController : Controller
     {
@@ -21,6 +22,7 @@ namespace FabriTrack.Controllers
 
         public async Task<IActionResult> Details(int id, int page = 1)
         {
+            // Load the customer's details, then find completed purchases the current user may view.
             var customer = await _context.Customers
                 .AsNoTracking()
                 .Where(item => item.CustomerId == id)
@@ -120,6 +122,7 @@ namespace FabriTrack.Controllers
             {
                 try
                 {
+                    // Customers with sales cannot be deleted, so their purchase history stays intact.
                     _context.Customers.Remove(customer);
                     await _context.SaveChangesAsync();
                     TempData["Success"] = $"'{customer.FullName}' deleted.";
@@ -151,6 +154,7 @@ namespace FabriTrack.Controllers
 
             model.TotalCustomers = await query.CountAsync();
             var matchingCustomerIds = query.Select(customer => customer.CustomerId);
+            // Count only completed sales that the current user is allowed to see.
             var completedSales = VisibleSales()
                 .Where(sale => !sale.IsVoided && sale.CustomerId.HasValue && matchingCustomerIds.Contains(sale.CustomerId.Value));
             model.CompletedPurchases = await completedSales.CountAsync();
@@ -181,6 +185,7 @@ namespace FabriTrack.Controllers
             if (User.IsInRole(Roles.Admin))
                 return query;
 
+            // Staff see only their own sales. If the user cannot be identified, show no sales.
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             return userId == null
                 ? query.Where(sale => false)

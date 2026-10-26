@@ -9,6 +9,7 @@ using System.Diagnostics;
 
 namespace FabriTrack.Controllers
 {
+    // Loads the dashboard totals, sales chart, stock alerts, and recent sales.
     public class HomeController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -17,6 +18,7 @@ namespace FabriTrack.Controllers
         [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
         public async Task<IActionResult> Index(string? period)
         {
+            // Use one of the available time periods for the dashboard.
             var periodDays = period switch
             {
                 "30d" => 30,
@@ -37,6 +39,7 @@ namespace FabriTrack.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!isAdmin)
             {
+                // Staff see only sales they processed.
                 currentSales = userId == null
                     ? currentSales.Where(sale => false)
                     : currentSales.Where(sale => sale.CashierId == userId);

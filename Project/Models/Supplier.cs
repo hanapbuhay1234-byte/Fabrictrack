@@ -2,6 +2,7 @@
 
 namespace FabriTrack.Models
 {
+    // Stores a supplier's contact details for inventory records.
     public class Supplier
     {
         public int SupplierId { get; set; }

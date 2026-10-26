@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FabriTrack.Models
 {
+    // Holds the staff list, account forms, totals, and any temporary password to show.
     public class UserManagementViewModel
     {
         public string? Search { get; set; }
@@ -21,6 +22,7 @@ namespace FabriTrack.Models
         public string? TemporaryPassword { get; set; }
     }
 
+    // Holds only the staff details needed for the table, not login credentials.
     public class StaffUserRowViewModel
     {
         public string Id { get; set; } = string.Empty;
@@ -31,6 +33,7 @@ namespace FabriTrack.Models
         public bool RequirePasswordChange { get; set; }
     }
 
+    // Holds and checks the details an admin enters to add a staff account.
     public class CreateStaffViewModel
     {
         [Required, StringLength(100)]
@@ -40,6 +43,7 @@ namespace FabriTrack.Models
         public string Email { get; set; } = string.Empty;
     }
 
+    // Holds the staff details an admin can change.
     public class EditStaffViewModel
     {
         [Required]

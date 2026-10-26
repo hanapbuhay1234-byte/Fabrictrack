@@ -2,6 +2,7 @@
 
 namespace FabriTrack.Models
 {
+    // Groups fabrics into categories for the inventory and reports.
     public class Category
     {
         public int CategoryId { get; set; }
@@ -12,6 +13,7 @@ namespace FabriTrack.Models
         [StringLength(250)]
         public string? Description { get; set; }
 
+        // The fabrics that belong to this category.
         public ICollection<Fabric> Fabrics { get; set; } = new List<Fabric>();
     }
 }

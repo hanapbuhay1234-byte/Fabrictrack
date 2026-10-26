@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FabriTrack.Controllers
 {
+    // Lets admins manage suppliers. A supplier with products cannot be deleted.
     [Authorize(Roles = Roles.Admin)]
     public class SuppliersController : Controller
     {
@@ -57,6 +58,7 @@ namespace FabriTrack.Controllers
 
         private async Task<SuppliersIndexViewModel> BuildIndexViewModel()
         {
+            // Load each supplier's active and archived product counts with the list.
             var suppliers = await _context.Suppliers
                 .OrderBy(supplier => supplier.Name)
                 .Select(supplier => new SupplierListItemViewModel
@@ -80,6 +82,7 @@ namespace FabriTrack.Controllers
             var supplier = await _context.Suppliers.FindAsync(id);
             if (supplier != null)
             {
+                // Move the supplier's products elsewhere before deleting the supplier.
                 var productCount = await _context.Fabrics.CountAsync(fabric => fabric.SupplierId == id);
                 if (productCount > 0)
                 {

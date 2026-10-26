@@ -1,5 +1,6 @@
 namespace FabriTrack.Models
 {
+    // Holds the category details and product counts for one table row.
     public class CategoryListItemViewModel
     {
         public int CategoryId { get; set; }
@@ -8,6 +9,7 @@ namespace FabriTrack.Models
         public int ActiveProductCount { get; set; }
         public int ArchivedProductCount { get; set; }
 
+        // Adds the active and archived product counts together.
         public int TotalProductCount => ActiveProductCount + ArchivedProductCount;
     }
 }

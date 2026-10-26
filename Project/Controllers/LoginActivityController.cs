@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FabriTrack.Controllers
 {
+    // Shows and downloads sign-in activity. Staff see only their own activity.
     [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class LoginActivityController : Controller
     {
@@ -107,6 +108,7 @@ namespace FabriTrack.Controllers
             var query = _context.LoginActivities.AsQueryable();
             if (!User.IsInRole(Roles.Admin))
             {
+                // Apply the same access rule to both the list and the download.
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 query = currentUserId == null
                     ? query.Where(entry => false)
@@ -158,6 +160,7 @@ namespace FabriTrack.Controllers
 
         private static string CsvField(string value)
         {
+            // Keep spreadsheet apps from treating a value as a formula.
             if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r')
                 value = $"'{value}";
             return $"\"{value.Replace("\"", "\"\"")}\"";

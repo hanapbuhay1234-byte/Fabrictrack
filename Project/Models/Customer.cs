@@ -2,6 +2,7 @@
 
 namespace FabriTrack.Models
 {
+    // Stores a customer's contact details and links them to their sales.
     public class Customer
     {
         public int CustomerId { get; set; }

@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FabriTrack.Models
 {
+    // Stores the main details for a sale, including its customer and cashier.
     public class Sale
     {
         public int SaleId { get; set; }
@@ -16,6 +17,7 @@ namespace FabriTrack.Models
         public string? CashierId { get; set; }
 
         [StringLength(256)]
+        // Keeps the cashier's name as it was when the sale was made.
         public string? CashierName { get; set; }
 
         [Column(TypeName = "decimal(10,2)")]
@@ -24,6 +26,7 @@ namespace FabriTrack.Models
         [StringLength(20)]
         public string PaymentStatus { get; set; } = "Paid";
 
+        // Voided sales stay in the history but are not counted in reports.
         public bool IsVoided { get; set; }
 
         public DateTime? VoidedAt { get; set; }
@@ -37,6 +40,7 @@ namespace FabriTrack.Models
         public ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
     }
 
+    // Stores one item on a sale, including its details at the time of purchase.
     public class SaleItem
     {
         public int SaleItemId { get; set; }
@@ -70,9 +74,11 @@ namespace FabriTrack.Models
         public decimal UnitPrice { get; set; }
 
         [Column(TypeName = "decimal(10,2)")]
+        // Calculates this item's total from its quantity and price.
         public decimal Subtotal => Quantity * UnitPrice;
     }
 
+    // Explains when and why a fabric's stock amount changed.
     public class InventoryMovement
     {
         public int InventoryMovementId { get; set; }

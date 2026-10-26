@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FabriTrack.Controllers
 {
+    // Handles the fabric list and stock changes. Only admins can edit product details.
     [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class FabricsController : Controller
     {
@@ -23,6 +24,7 @@ namespace FabriTrack.Controllers
             string? sort,
             bool includeArchived = false)
         {
+            // Only admins can choose to show archived fabrics.
             var fabrics = _context.Fabrics
                 .Include(f => f.Category)
                 .Include(f => f.Supplier)
@@ -148,9 +150,10 @@ namespace FabriTrack.Controllers
                     using var stream = System.IO.File.Create(filepath);
                     await file.CopyToAsync(stream);
                     newImagePath = $"/uploads/fabrics/{filename}";
-                    fabric.ImageUrl = newImagePath; // set before save
+                    fabric.ImageUrl = newImagePath; // Save the image location with the fabric.
                 }
 
+                // Save the new fabric and its starting stock record together.
                 await using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
@@ -175,7 +178,7 @@ namespace FabriTrack.Controllers
                 catch
                 {
                     await transaction.RollbackAsync();
-                    // If DB save failed and we wrote a new file, remove the orphan file
+                    // Remove the uploaded image if the fabric could not be saved.
                     if (!string.IsNullOrEmpty(newImagePath))
                     {
                         try
@@ -215,6 +218,7 @@ namespace FabriTrack.Controllers
 
             var existing = await _context.Fabrics.FindAsync(id);
             if (existing == null) return NotFound();
+            // Keep stock changes in the restock and adjustment actions.
             fabric.StockQuantity = existing.StockQuantity;
             fabric.Sku = fabric.Sku?.Trim().ToUpperInvariant() ?? string.Empty;
 
@@ -280,7 +284,7 @@ namespace FabriTrack.Controllers
                     using var stream = System.IO.File.Create(filepath);
                     await file.CopyToAsync(stream);
 
-                    // set up previous and new paths; do not delete previous yet
+                    // Keep the old image until the fabric update succeeds.
                     previousImage = existing.ImageUrl;
                     newImagePath = $"/uploads/fabrics/{filename}";
                     existing.ImageUrl = newImagePath;
@@ -290,7 +294,7 @@ namespace FabriTrack.Controllers
                 {
                     await _context.SaveChangesAsync();
 
-                    // After successful save, delete previous file if it lived under uploads/fabrics
+                    // Delete the old image only after the new one has been saved.
                     if (!string.IsNullOrEmpty(previousImage))
                     {
                         try
@@ -316,7 +320,7 @@ namespace FabriTrack.Controllers
                 }
                 catch
                 {
-                    // If save failed and we created a new file, remove the orphan new file
+                    // Remove the new image if the fabric update failed.
                     if (!string.IsNullOrEmpty(newImagePath))
                     {
                         try
@@ -347,6 +351,7 @@ namespace FabriTrack.Controllers
             var fabric = await _context.Fabrics.FindAsync(id);
             if (fabric == null) return NotFound();
 
+            // Hide this fabric from active inventory without removing its old sales.
             fabric.IsActive = false;
             await _context.SaveChangesAsync();
             TempData["Success"] = $"'{fabric.Name}' ({fabric.Sku}) archived. Its sales history remains available.";
@@ -398,6 +403,7 @@ namespace FabriTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Save the new stock amount and its restock record together.
             fabric.StockQuantity += quantity;
             _context.InventoryMovements.Add(new InventoryMovement
             {
@@ -457,6 +463,7 @@ namespace FabriTrack.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
+            // Save the adjustment and a record explaining the stock change together.
             fabric.StockQuantity = adjustedStock;
             _context.InventoryMovements.Add(new InventoryMovement
             {

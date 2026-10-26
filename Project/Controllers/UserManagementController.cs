@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FabriTrack.Controllers
 {
+    // Lets admins add staff, update accounts, enable or disable sign-in, and reset passwords.
     [Authorize(Roles = Roles.Admin)]
     public class UserManagementController : Controller
     {
@@ -72,6 +73,7 @@ namespace FabriTrack.Controllers
             };
             IdentityResult? identityFailure = null;
 
+            // Create the account and give it the Staff role together, or undo both changes.
             await using (var transaction = await _context.Database.BeginTransactionAsync())
             {
                 try
@@ -159,6 +161,7 @@ namespace FabriTrack.Controllers
         {
             var user = await FindStaffAsync(id);
             if (user == null) return NotFound();
+            // Check the saved account status instead of trusting a value from the page.
             var isActive = !user.IsActive;
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -169,6 +172,7 @@ namespace FabriTrack.Controllers
                 user.LockoutEnabled = true;
                 if (isActive)
                 {
+                    // Clear any old lockout so the reactivated account can sign in.
                     user.LockoutEnd = null;
                     user.AccessFailedCount = 0;
                 }
@@ -211,6 +215,7 @@ namespace FabriTrack.Controllers
             if (user == null) return NotFound();
 
             var temporaryPassword = GenerateTemporaryPassword();
+            // Reset the password and require the user to change it before continuing.
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -254,6 +259,7 @@ namespace FabriTrack.Controllers
             var staffRole = await _roleManager.FindByNameAsync(Roles.Staff);
             if (staffRole == null) return model;
 
+            // List staff accounts, leaving out any account that is also an admin.
             var staffQuery = _userManager.Users
                 .Where(user => _context.UserRoles.Any(userRole =>
                     userRole.UserId == user.Id && userRole.RoleId == staffRole.Id));
@@ -321,6 +327,7 @@ namespace FabriTrack.Controllers
             const string digits = "23456789";
             const string symbols = "!@$%*-_";
             const string all = upper + lower + digits + symbols;
+            // Include the required types of characters, then mix their order.
             var characters = new List<char>
             {
                 upper[RandomNumberGenerator.GetInt32(upper.Length)],

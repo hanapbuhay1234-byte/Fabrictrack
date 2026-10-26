@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace FabriTrack.Models
 {
+    // Holds the sales search options, totals, filter lists, and current page.
     public class SalesHistoryViewModel
     {
         public string? Search { get; set; }
@@ -24,6 +25,7 @@ namespace FabriTrack.Models
         public bool HasNextPage => Page < TotalPages;
     }
 
+    // Details shown for one sale in the history table.
     public class SalesHistoryRowViewModel
     {
         public int SaleId { get; set; }

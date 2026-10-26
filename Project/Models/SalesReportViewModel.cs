@@ -1,5 +1,6 @@
 namespace FabriTrack.Models
 {
+    // Holds the report totals and grouped sales data for the selected dates.
     public class SalesReportViewModel
     {
         public string FilterType { get; set; } = "day";
@@ -22,6 +23,7 @@ namespace FabriTrack.Models
         public List<SalesReportFabricRow> FabricBreakdown { get; set; } = new();
     }
 
+    // Sales totals for one day, week, or month in the report.
     public class SalesReportTrendPoint
     {
         public DateTime PeriodStart { get; set; }
@@ -32,6 +34,7 @@ namespace FabriTrack.Models
         public int BarHeightPercent { get; set; }
     }
 
+    // Sales totals for one day, used to build the report chart.
     public class SalesReportDailyAggregate
     {
         public DateTime Date { get; set; }
@@ -39,6 +42,7 @@ namespace FabriTrack.Models
         public int OrderCount { get; set; }
     }
 
+    // Sales totals grouped by the category saved on each sale.
     public class SalesReportCategoryRow
     {
         public string Name { get; set; } = string.Empty;
@@ -46,6 +50,7 @@ namespace FabriTrack.Models
         public decimal Revenue { get; set; }
     }
 
+    // Sales totals and quantities grouped by the product details saved on each sale.
     public class SalesReportFabricRow
     {
         public string Sku { get; set; } = string.Empty;

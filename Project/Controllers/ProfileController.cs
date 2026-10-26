@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FabriTrack.Controllers
 {
+    // Lets users update their profile and manage their private profile photo.
     [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class ProfileController : Controller
     {
@@ -49,6 +50,7 @@ namespace FabriTrack.Controllers
             var emailChanged = !string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase);
             if (emailChanged)
             {
+                // Ask for the current password before changing the sign-in email.
                 if (string.IsNullOrWhiteSpace(input.CurrentPassword))
                 {
                     ModelState.AddModelError(nameof(input.CurrentPassword), "Enter your current password to change your sign-in email.");
@@ -62,6 +64,7 @@ namespace FabriTrack.Controllers
             if (!ModelState.IsValid)
                 return View(nameof(Index), CreateViewModel(user, input));
 
+            // The email is also the username, so update both and refresh the sign-in security.
             user.FullName = input.FullName.Trim();
             user.PhoneNumber = string.IsNullOrWhiteSpace(input.PhoneNumber) ? null : input.PhoneNumber.Trim();
 
@@ -110,6 +113,7 @@ namespace FabriTrack.Controllers
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
+                // Remove the new photo if the account update did not save.
                 user.ProfilePhotoFileName = previousPhotoFileName;
                 DeletePhoto(newPhotoFileName);
                 foreach (var error in result.Errors)
@@ -194,6 +198,7 @@ namespace FabriTrack.Controllers
                 return null;
             }
 
+            // Give the photo a new file name instead of using the name from the upload.
             var fileName = $"{Guid.NewGuid():N}{extension}";
             var directory = GetPhotoDirectory();
             Directory.CreateDirectory(directory);
@@ -225,6 +230,7 @@ namespace FabriTrack.Controllers
         private bool TryGetPhotoPath(string? fileName, out string path)
         {
             path = string.Empty;
+            // Check the saved file name before looking for it in the photo folder.
             if (!IsPhotoFileName(fileName))
                 return false;
 

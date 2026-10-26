@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FabriTrack.Models
 {
+    // Keeps the unit names used by inventory and stock checks in one place.
     public static class ProductUnits
     {
         public const string Yard = "yard";
@@ -17,6 +18,7 @@ namespace FabriTrack.Models
             unit is Roll or Piece;
     }
 
+    // Stores a fabric's details, price, and current stock.
     public class Fabric : IValidatableObject
     {
         public int FabricId { get; set; }
@@ -48,6 +50,7 @@ namespace FabriTrack.Models
         [Range(typeof(decimal), "0", "99999999.99")]
         public decimal ReorderLevel { get; set; } = 5;
 
+        // Archived fabrics stay in old records but are hidden from active inventory.
         public bool IsActive { get; set; } = true;
 
         public string? ImageUrl { get; set; }
@@ -61,6 +64,7 @@ namespace FabriTrack.Models
         public ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
         public ICollection<InventoryMovement> InventoryMovements { get; set; } = new List<InventoryMovement>();
 
+        // Checks that stock and reorder amounts make sense for the selected unit.
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (!ProductUnits.IsValid(Unit))

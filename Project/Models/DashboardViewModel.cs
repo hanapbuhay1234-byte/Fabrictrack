@@ -1,5 +1,6 @@
 namespace FabriTrack.Models
 {
+    // Holds the numbers and lists shown on the dashboard.
     public class DashboardViewModel
     {
         public bool IsAdmin { get; set; }
@@ -19,6 +20,7 @@ namespace FabriTrack.Models
         public List<Sale> RecentSales { get; set; } = new();
     }
 
+    // Sales totals for one day on the dashboard chart.
     public class DashboardSalesDay
     {
         public DateTime Date { get; set; }
@@ -27,6 +29,7 @@ namespace FabriTrack.Models
         public int BarHeightPercent { get; set; }
     }
 
+    // Sales totals for one of the best-selling fabrics.
     public class DashboardTopFabric
     {
         public string Sku { get; set; } = string.Empty;

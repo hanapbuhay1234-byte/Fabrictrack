@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FabriTrack.Controllers
 {
+    // Lets admins manage categories. A category in use cannot be deleted.
     [Authorize(Roles = Roles.Admin)]
     public class CategoriesController : Controller
     {
@@ -16,6 +17,7 @@ namespace FabriTrack.Controllers
 
         private async Task<CategoriesIndexViewModel> BuildIndexViewModel()
         {
+            // Load the product counts along with the category list.
             var categories = await _context.Categories
                 .OrderBy(category => category.Name)
                 .Select(category => new CategoryListItemViewModel
@@ -83,6 +85,7 @@ namespace FabriTrack.Controllers
             var category = await _context.Categories.FindAsync(id);
             if (category != null)
             {
+                // Products must be moved to another category before this one can be deleted.
                 var productCount = await _context.Fabrics.CountAsync(fabric => fabric.CategoryId == id);
                 if (productCount > 0)
                 {

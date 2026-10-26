@@ -11,6 +11,7 @@ using System.Text;
 
 namespace FabriTrack.Controllers
 {
+    // Handles checkout, receipts, and sales history. Staff see only their own sales.
     [Authorize(Roles = Roles.Admin + "," + Roles.Staff)]
     public class SalesController : Controller
     {
@@ -45,6 +46,7 @@ namespace FabriTrack.Controllers
             string? cashierId,
             int page = 1)
         {
+            // Use the same search for the totals and the sales shown on the page.
             var model = new SalesHistoryViewModel
             {
                 Search = search?.Trim(),
@@ -170,6 +172,7 @@ namespace FabriTrack.Controllers
                 return RedirectToAction(nameof(Index), new { search, startDate, endDate, customerId, cashierId, page });
             }
 
+            // Update the sale, restore stock, and record the reason as one all-or-nothing change.
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -268,6 +271,7 @@ namespace FabriTrack.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateCustomer(QuickCustomerCreateViewModel input)
         {
+            // Check the new customer's details and report problems without leaving checkout.
             input.FullName = input.FullName?.Trim() ?? string.Empty;
             input.ContactNumber = string.IsNullOrWhiteSpace(input.ContactNumber)
                 ? null
@@ -307,6 +311,7 @@ namespace FabriTrack.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(int? customerId, List<int> fabricIds, List<decimal> quantities)
         {
+            // Add together repeated cart entries before checking each product's stock.
             if (fabricIds.Count == 0 || fabricIds.Count != quantities.Count)
             {
                 ModelState.AddModelError("", "Please add at least one valid product line item.");
@@ -368,6 +373,7 @@ namespace FabriTrack.Controllers
             if (cashier == null)
                 return Challenge();
 
+            // Save the sale, its items, stock changes, and stock records together.
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -498,6 +504,7 @@ namespace FabriTrack.Controllers
             if (User.IsInRole(Roles.Admin))
                 return query;
 
+            // Staff can access only sales they processed.
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             return userId == null
                 ? query.Where(sale => false)
@@ -554,6 +561,7 @@ namespace FabriTrack.Controllers
 
         private static string CsvField(string value)
         {
+            // Format values safely for CSV files and spreadsheet apps.
             var trimmedValue = value.TrimStart();
             var safeValue = trimmedValue.StartsWith('=') ||
                 trimmedValue.StartsWith('+') ||

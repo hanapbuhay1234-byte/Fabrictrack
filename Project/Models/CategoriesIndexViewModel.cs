@@ -1,5 +1,6 @@
 namespace FabriTrack.Models
 {
+    // Holds the category list and the information needed for its add and edit forms.
     public class CategoriesIndexViewModel
     {
         public List<CategoryListItemViewModel> Categories { get; set; } = new();
@@ -8,6 +9,7 @@ namespace FabriTrack.Models
         public bool OpenCreateModal { get; set; }
         public bool OpenEditModal { get; set; }
 
+        // Adds up the product counts for all categories in the list.
         public int ActiveProductCount => Categories.Sum(category => category.ActiveProductCount);
         public int ArchivedProductCount => Categories.Sum(category => category.ArchivedProductCount);
     }
