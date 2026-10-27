@@ -40,6 +40,8 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+    options.TokenLifespan = TimeSpan.FromHours(1));
 
 // Add app-specific sign-in details, save sign-in activity, and quickly apply account changes.
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
@@ -51,6 +53,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IImageStorage, ImageStorage>();
+builder.Services.AddScoped<IPasswordResetEmailSender, PasswordResetEmailSender>();
 
 var app = builder.Build();
 _ = app.Services.GetRequiredService<IImageStorage>();
