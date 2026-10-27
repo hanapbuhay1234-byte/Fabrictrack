@@ -57,9 +57,9 @@ The project uses EF Core 8, so use the matching `dotnet-ef` 8.x tool. The migrat
 
 ## 4. Configure password recovery email
 
-Password recovery sends one-time ASP.NET Core Identity reset links through SMTP. Links expire after one hour. SMTP sending is limited to 20 seconds; if it fails or times out, the page still displays the generic confirmation to avoid exposing whether an account exists, and the failure is recorded in Render logs. Choose an SMTP email provider and obtain its host, port, username, password, and a verified sender email address. Use the provider's SMTP credentials rather than an account login password; store the SMTP password as a Render secret.
+Password recovery sends one-time ASP.NET Core Identity reset links through the Brevo transactional email API over HTTPS. Links expire after one hour. Sending is limited to 20 seconds; if it fails or times out, the page still displays the generic confirmation to avoid exposing whether an account exists, and the failure is recorded in Render logs. Render Free blocks outbound SMTP ports, so use Brevo's API rather than SMTP.
 
-For typical SMTP submission, use port `587` with STARTTLS. FabriTrack requires TLS for SMTP connections. The reset URL uses the public HTTPS address of the deployed Render service, so configure that URL exactly as shown in the Render dashboard.
+In Brevo, create an API key (not an SMTP key), enable transactional email, and verify the sender email address you plan to use. Keep the API key secret. The reset URL uses the public HTTPS address of the deployed Render service, so configure that URL exactly as shown in the Render dashboard.
 
 ## 5. Configure the Render web service
 
@@ -80,12 +80,9 @@ For typical SMTP submission, use port `587` with STARTTLS. FabriTrack requires T
    | `ImageStorage__ImageKitId` | ImageKit ID from your dashboard |
    | `ImageStorage__PrivateKey` | ImageKit Private Key (keep secret) |
    | `App__PublicBaseUrl` | Public HTTPS URL of this Render service, for example `https://fabrictrack.onrender.com` |
-   | `Email__Smtp__Host` | SMTP host from your email provider |
-   | `Email__Smtp__Port` | SMTP TLS port, usually `587` |
-   | `Email__Smtp__Username` | SMTP username |
-   | `Email__Smtp__Password` | SMTP password or provider-generated SMTP key (keep secret) |
-   | `Email__Smtp__FromEmail` | Verified sender email address |
-   | `Email__Smtp__FromName` | `FabriTrack` (optional) |
+   | `Email__Brevo__ApiKey` | Brevo API key (keep secret; do not use an SMTP key) |
+   | `Email__Brevo__FromEmail` | Sender email address verified in Brevo |
+   | `Email__Brevo__FromName` | `FabriTrack` (optional; defaults to `FabriTrack`) |
 
 6. Under **Environment > Secret Files**, add the downloaded Aiven CA certificate with the filename `aiven-ca.pem`. Render makes it available to the container at `/etc/secrets/aiven-ca.pem`.
 7. Save and deploy. Do not add these secret values to source control, a Dockerfile, or a committed `render.yaml`.
@@ -95,10 +92,10 @@ For typical SMTP submission, use port `587` with STARTTLS. FabriTrack requires T
 ## 6. Verify the deployment
 
 1. Wait for Render's deploy to complete and open the provided HTTPS URL.
-2. Check Render logs for database, migration, certificate, ImageKit configuration, administrator-seed, or SMTP password-reset errors.
+2. Check Render logs for database, migration, certificate, ImageKit configuration, administrator-seed, or Brevo password-reset errors.
 3. Sign in using the administrator credentials configured for this deployment and confirm the Admin role is present.
 4. Upload a test fabric image and profile photo. Confirm both display, then restart or redeploy the Render service and confirm they still display.
-5. On the sign-in page, use **Forgot password?** with a test account and verify that the email arrives and its link allows a password reset.
+5. On the sign-in page, use **Forgot password?** with a test account and verify that the email arrives and its link allows a password reset. If it does not arrive, check Brevo's transactional email logs and the Render application logs.
 6. Use fictional data only. Existing image records still refer to local files from before this change; missing local images cannot be restored by deployment. Re-upload images that you still have.
 
 ## Important limitations
@@ -108,7 +105,7 @@ For typical SMTP submission, use port `587` with STARTTLS. FabriTrack requires T
 - Render Free does not provide persistent disk storage. FabriTrack uses ImageKit for newly uploaded profile photos and fabric images when `ImageStorage__Provider=ImageKit` is configured.
 - ImageKit files are private. Profile-photo access is protected by authenticated endpoints, and fabric-image endpoints require a signed-in Admin or Staff account.
 - If ImageKit configuration is missing or invalid, the app fails startup rather than silently reverting to Render's ephemeral filesystem.
-- Password recovery requires valid SMTP settings and `App__PublicBaseUrl`; without them, the reset form reports that recovery is not configured.
+- Password recovery requires a Brevo API key, a verified sender email address, and `App__PublicBaseUrl`; without them, the reset form reports that recovery is not configured.
 - The reset confirmation page intentionally does not reveal whether the submitted email belongs to an account.
 - Check ImageKit storage and bandwidth usage and current plan limits regularly.
 - Back up any data you need to keep, and test restoring it. Do not use the demonstration database for real customer, employee, or business information.

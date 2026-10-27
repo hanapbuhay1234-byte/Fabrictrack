@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Net;
-using System.Net.Mail;
+using System.Net.Http.Json;
 
 namespace FabriTrack.Services
 {
@@ -15,33 +15,28 @@ namespace FabriTrack.Services
 
     public sealed class PasswordResetEmailSender : IPasswordResetEmailSender
     {
+        private static readonly Uri BrevoEndpoint = new("https://api.brevo.com/v3/smtp/email");
         private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(20);
-        private readonly string? _host;
-        private readonly int _port;
-        private readonly string? _username;
-        private readonly string? _password;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly string? _apiKey;
         private readonly string? _fromEmail;
         private readonly string _fromName;
         private readonly ILogger<PasswordResetEmailSender> _logger;
 
         public PasswordResetEmailSender(
             IConfiguration configuration,
+            IHttpClientFactory httpClientFactory,
             ILogger<PasswordResetEmailSender> logger)
         {
+            _httpClientFactory = httpClientFactory;
             _logger = logger;
-            _host = configuration["Email:Smtp:Host"];
-            _username = configuration["Email:Smtp:Username"];
-            _password = configuration["Email:Smtp:Password"];
-            _fromEmail = configuration["Email:Smtp:FromEmail"];
-            _fromName = configuration["Email:Smtp:FromName"] ?? "FabriTrack";
-            _port = int.TryParse(configuration["Email:Smtp:Port"], out var port) ? port : 0;
+            _apiKey = configuration["Email:Brevo:ApiKey"];
+            _fromEmail = configuration["Email:Brevo:FromEmail"];
+            _fromName = configuration["Email:Brevo:FromName"] ?? "FabriTrack";
         }
 
         public bool IsConfigured =>
-            !string.IsNullOrWhiteSpace(_host) &&
-            _port is > 0 and <= 65535 &&
-            !string.IsNullOrWhiteSpace(_username) &&
-            !string.IsNullOrWhiteSpace(_password) &&
+            !string.IsNullOrWhiteSpace(_apiKey) &&
             !string.IsNullOrWhiteSpace(_fromEmail);
 
         public async Task SendResetLinkAsync(
@@ -50,55 +45,60 @@ namespace FabriTrack.Services
             CancellationToken cancellationToken = default)
         {
             if (!IsConfigured)
-                throw new InvalidOperationException("SMTP email settings are incomplete.");
+                throw new InvalidOperationException("Brevo email settings are incomplete.");
 
-            using var message = new MailMessage
+            using var request = new HttpRequestMessage(HttpMethod.Post, BrevoEndpoint);
+            request.Headers.TryAddWithoutValidation("api-key", _apiKey);
+            request.Content = JsonContent.Create(new
             {
-                From = new MailAddress(_fromEmail!, _fromName),
-                Subject = "Reset your FabriTrack password",
-                Body = $"""
+                sender = new { name = _fromName, email = _fromEmail },
+                to = new[] { new { email = emailAddress } },
+                subject = "Reset your FabriTrack password",
+                htmlContent = $"""
                     <p>We received a request to reset the password for your FabriTrack account.</p>
                     <p><a href="{WebUtility.HtmlEncode(resetUrl)}">Reset your password</a></p>
                     <p>This link can only be used once. If you did not request a reset, you can ignore this email.</p>
-                    """,
-                IsBodyHtml = true
-            };
-            message.To.Add(new MailAddress(emailAddress));
+                    """
+            });
 
-            using var client = new SmtpClient(_host, _port)
-            {
-                EnableSsl = true,
-                Credentials = new NetworkCredential(_username, _password),
-                DeliveryMethod = SmtpDeliveryMethod.Network
-            };
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(SendTimeout);
 
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                await client.SendMailAsync(message, timeout.Token);
+                using var response = await _httpClientFactory.CreateClient().SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    timeout.Token);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException(
+                        "Brevo did not accept the password reset email.",
+                        null,
+                        response.StatusCode);
+                }
+
                 _logger.LogInformation(
-                    "Password reset email accepted by SMTP host {SmtpHost} in {ElapsedMilliseconds} ms.",
-                    _host,
+                    "Password reset email accepted by Brevo in {ElapsedMilliseconds} ms.",
                     stopwatch.ElapsedMilliseconds);
             }
             catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
             {
                 _logger.LogError(
                     exception,
-                    "Sending password reset email through SMTP host {SmtpHost} timed out after {TimeoutSeconds} seconds.",
-                    _host,
+                    "Sending password reset email through Brevo timed out after {TimeoutSeconds} seconds.",
                     SendTimeout.TotalSeconds);
                 throw;
             }
-            catch (SmtpException exception)
+            catch (HttpRequestException exception)
             {
                 _logger.LogError(
                     exception,
-                    "SMTP host {SmtpHost} rejected or failed to accept a password reset email after {ElapsedMilliseconds} ms.",
-                    _host,
-                    stopwatch.ElapsedMilliseconds);
+                    "Brevo failed to accept a password reset email after {ElapsedMilliseconds} ms (status {StatusCode}).",
+                    stopwatch.ElapsedMilliseconds,
+                    exception.StatusCode);
                 throw;
             }
         }

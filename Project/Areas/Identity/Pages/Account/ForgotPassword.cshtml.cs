@@ -95,7 +95,7 @@ namespace FabriTrack.Areas.Identity.Pages.Account
                 await _emailSender.SendResetLinkAsync(user.Email!, resetUrl, HttpContext.RequestAborted);
             }
             catch (Exception exception) when (
-                exception is InvalidOperationException or System.Net.Mail.SmtpException or
+                exception is InvalidOperationException or HttpRequestException or
                     FormatException or OperationCanceledException)
             {
                 _logger.LogError(exception, "Unable to send a password reset email for user {UserId}.", user.Id);
