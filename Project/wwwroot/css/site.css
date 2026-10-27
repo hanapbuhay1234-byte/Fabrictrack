@@ -5,7 +5,7 @@
    ============================================================ */
 :root {
     /* Typography */
-    --ft-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --ft-font: "Roboto", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --font-body: var(--ft-font);
     --font-display: var(--ft-font);
 
