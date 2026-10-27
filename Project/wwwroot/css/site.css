@@ -1331,6 +1331,13 @@ table.data-table thead th[data-sort] {
 
 .auth-page .page-footer { text-align: center; color: rgba(255,255,255,0.62); }
 
+.auth-sound-toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1050;
+}
+
 .auth-card a { color: var(--color-indigo); font-weight:600; }
 .auth-card a.btn-primary,
 .auth-card a.btn-primary:hover,

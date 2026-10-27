@@ -12,6 +12,9 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body class="auth-body">
+    <button id="soundToggle" class="btn btn-sm btn-outline-light auth-sound-toggle" type="button" aria-label="Turn click sounds off" title="Click sounds on">
+        <i class="bi bi-volume-up"></i>
+    </button>
     <main class="auth-page">
         @RenderBody()
     </main>
@@ -19,5 +22,6 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    <script src="~/js/click-sounds.js" asp-append-version="true"></script>
 </body>
 </html>
