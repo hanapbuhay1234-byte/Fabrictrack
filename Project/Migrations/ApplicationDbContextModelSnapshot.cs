@@ -71,8 +71,8 @@ namespace Project.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("ProfilePhotoFileName")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
 
                     b.Property<bool>("RequirePasswordChange")
                         .HasColumnType("tinyint(1)");

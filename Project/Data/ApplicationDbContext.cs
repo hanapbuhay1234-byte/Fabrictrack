@@ -147,7 +147,7 @@ namespace FabriTrack.Data
 
             builder.Entity<ApplicationUser>()
                 .Property(user => user.ProfilePhotoFileName)
-                .HasMaxLength(64);
+                .HasMaxLength(255);
 
             builder.Entity<AuditLog>()
                 .HasIndex(log => log.OccurredAt);
