@@ -102,15 +102,15 @@
 
             var play = function () {
                 if (kind === "hover") {
-                    playTone(context, 1900, 0.025, 0.025);
+                    playTone(context, 1900, 0.025, 0.06);
                 } else if (kind === "press") {
-                    playNoise(context, "lowpass", 1500, 0.035, 0.12);
-                    playTone(context, 360, 0.04, 0.045);
+                    playNoise(context, "lowpass", 1500, 0.035, 0.3);
+                    playTone(context, 360, 0.04, 0.12);
                 } else if (kind === "release") {
-                    playNoise(context, "bandpass", 3100, 0.028, 0.11);
+                    playNoise(context, "bandpass", 3100, 0.028, 0.28);
                 } else if (kind === "toggle") {
-                    playTone(context, 740, 0.065, 0.09);
-                    playTone(context, 990, 0.075, 0.06);
+                    playTone(context, 740, 0.065, 0.22);
+                    playTone(context, 990, 0.075, 0.15);
                 }
             };
 
