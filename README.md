@@ -81,7 +81,7 @@ If `dotnet-ef` version 8.0.0 is already installed, skip the install command. EF 
 
 ## Online demonstration deployment
 
-For a free Render + Aiven demonstration deployment, follow the [deployment guide](docs/deployment-render-aiven.md). Production deployments require both `Seed:AdminEmail` and `Seed:AdminPassword` to be set; the development-only fallback administrator is not used outside Development.
+For a Render + Aiven demonstration deployment with ImageKit storage for uploaded images, follow the [deployment guide](docs/deployment-render-aiven.md). Production deployments require `Seed:AdminEmail`, `Seed:AdminPassword`, and ImageKit storage configuration; the development-only fallback administrator and local image storage are not used outside Development.
 
 ## Useful links
 

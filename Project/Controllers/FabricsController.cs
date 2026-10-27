@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using FabriTrack.Services;
 
 namespace FabriTrack.Controllers
 {
@@ -12,8 +13,17 @@ namespace FabriTrack.Controllers
     public class FabricsController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly IWebHostEnvironment _env;
-        public FabricsController(ApplicationDbContext context, IWebHostEnvironment env) { _context = context; _env = env; }
+        private readonly IImageStorage _imageStorage;
+        private readonly ILogger<FabricsController> _logger;
+        public FabricsController(
+            ApplicationDbContext context,
+            IImageStorage imageStorage,
+            ILogger<FabricsController> logger)
+        {
+            _context = context;
+            _imageStorage = imageStorage;
+            _logger = logger;
+        }
 
         public async Task<IActionResult> Index(
             string? search,
@@ -143,13 +153,19 @@ namespace FabriTrack.Controllers
                 string? newImagePath = null;
                 if (file != null)
                 {
-                    var uploads = Path.Combine(_env.WebRootPath, "uploads", "fabrics");
-                    Directory.CreateDirectory(uploads);
-                    var filename = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName).ToLowerInvariant();
-                    var filepath = Path.Combine(uploads, filename);
-                    using var stream = System.IO.File.Create(filepath);
-                    await file.CopyToAsync(stream);
-                    newImagePath = $"/uploads/fabrics/{filename}";
+                    try
+                    {
+                        newImagePath = await _imageStorage.SaveAsync("fabrics", file);
+                    }
+                    catch (ImageStorageException exception)
+                    {
+                        _logger.LogError(exception, "Unable to store an image for fabric {FabricSku}.", fabric.Sku);
+                        ModelState.AddModelError("ImageUrl", "The image could not be uploaded. Please try again.");
+                        ViewBag.Units = GetUnits();
+                        PopulateDropdowns(fabric);
+                        return View(fabric);
+                    }
+
                     fabric.ImageUrl = newImagePath; // Save the image location with the fabric.
                 }
 
@@ -183,15 +199,12 @@ namespace FabriTrack.Controllers
                     {
                         try
                         {
-                            var webRoot = _env.WebRootPath;
-                            var uploadsDir = Path.GetFullPath(Path.Combine(webRoot, "uploads", "fabrics")) + Path.DirectorySeparatorChar;
-                            var candidate = Path.GetFullPath(Path.Combine(webRoot, newImagePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar)));
-                            if (candidate.StartsWith(uploadsDir, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(candidate))
-                            {
-                                System.IO.File.Delete(candidate);
-                            }
+                            await _imageStorage.DeleteAsync(newImagePath);
                         }
-                        catch { }
+                        catch (ImageStorageException exception)
+                        {
+                            _logger.LogWarning(exception, "Unable to remove orphaned fabric image {ImageKey}.", newImagePath);
+                        }
                     }
                     throw;
                 }
@@ -277,16 +290,22 @@ namespace FabriTrack.Controllers
                         return View(fabric);
                     }
 
-                    var uploads = Path.Combine(_env.WebRootPath, "uploads", "fabrics");
-                    Directory.CreateDirectory(uploads);
-                    var filename = Guid.NewGuid().ToString() + ext;
-                    var filepath = Path.Combine(uploads, filename);
-                    using var stream = System.IO.File.Create(filepath);
-                    await file.CopyToAsync(stream);
-
                     // Keep the old image until the fabric update succeeds.
                     previousImage = existing.ImageUrl;
-                    newImagePath = $"/uploads/fabrics/{filename}";
+                    try
+                    {
+                        newImagePath = await _imageStorage.SaveAsync("fabrics", file);
+                    }
+                    catch (ImageStorageException exception)
+                    {
+                        _logger.LogError(exception, "Unable to store an image for fabric {FabricId}.", existing.FabricId);
+                        ModelState.AddModelError("ImageUrl", "The image could not be uploaded. Please try again.");
+                        fabric.StockQuantity = existing.StockQuantity;
+                        ViewBag.Units = GetUnits();
+                        PopulateDropdowns(fabric);
+                        return View(fabric);
+                    }
+
                     existing.ImageUrl = newImagePath;
                 }
 
@@ -299,15 +318,13 @@ namespace FabriTrack.Controllers
                     {
                         try
                         {
-                            var webRoot = _env.WebRootPath;
-                            var uploadsDir = Path.GetFullPath(Path.Combine(webRoot, "uploads", "fabrics")) + Path.DirectorySeparatorChar;
-                            var candidate = Path.GetFullPath(Path.Combine(webRoot, previousImage.TrimStart('/').Replace('/', Path.DirectorySeparatorChar)));
-                            if (candidate.StartsWith(uploadsDir, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(candidate))
-                            {
-                                System.IO.File.Delete(candidate);
-                            }
+                            await _imageStorage.DeleteAsync(previousImage);
                         }
-                        catch { /* ignore deletion errors */ }
+                        catch (ImageStorageException exception)
+                        {
+                            _logger.LogWarning(exception, "Unable to remove replaced fabric image {ImageKey}.", previousImage);
+                            TempData["Error"] = "The fabric was updated, but its previous image could not be removed from storage.";
+                        }
                     }
 
                     TempData["Success"] = $"'{fabric.Name}' updated.";
@@ -315,6 +332,8 @@ namespace FabriTrack.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
+                    if (!string.IsNullOrEmpty(newImagePath))
+                        await DeleteImageAfterFailureAsync(newImagePath);
                     if (!_context.Fabrics.Any(f => f.FabricId == id)) return NotFound();
                     throw;
                 }
@@ -322,27 +341,31 @@ namespace FabriTrack.Controllers
                 {
                     // Remove the new image if the fabric update failed.
                     if (!string.IsNullOrEmpty(newImagePath))
-                    {
-                        try
-                        {
-                            var webRoot = _env.WebRootPath;
-                            var uploadsDir = Path.GetFullPath(Path.Combine(webRoot, "uploads", "fabrics")) + Path.DirectorySeparatorChar;
-                            var candidate = Path.GetFullPath(Path.Combine(webRoot, newImagePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar)));
-                            if (candidate.StartsWith(uploadsDir, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(candidate))
-                            {
-                                System.IO.File.Delete(candidate);
-                            }
-                        }
-                        catch { }
-                    }
+                        await DeleteImageAfterFailureAsync(newImagePath);
                     ModelState.AddModelError(string.Empty, "Updating the fabric failed. Please try again.");
                     PopulateDropdowns(fabric);
                     return View(fabric);
                 }
+
             }
             ViewBag.Units = GetUnits();
             PopulateDropdowns(fabric);
             return View(fabric);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Image(string? key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return NotFound();
+
+            var image = await _imageStorage.OpenReadAsync(key);
+            if (image == null)
+                return NotFound();
+
+            Response.Headers["Cache-Control"] = "private, no-store";
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            return File(image.Content, image.ContentType);
         }
 
         [HttpPost, ValidateAntiForgeryToken, Authorize(Roles = Roles.Admin)]
@@ -501,6 +524,18 @@ namespace FabriTrack.Controllers
         private static bool IsValidQuantity(string unit, decimal quantity) =>
             decimal.Round(quantity, 2) == quantity &&
             (!ProductUnits.IsDiscrete(unit) || quantity == decimal.Truncate(quantity));
+
+        private async Task DeleteImageAfterFailureAsync(string imageKey)
+        {
+            try
+            {
+                await _imageStorage.DeleteAsync(imageKey);
+            }
+            catch (ImageStorageException exception)
+            {
+                _logger.LogWarning(exception, "Unable to remove orphaned fabric image {ImageKey}.", imageKey);
+            }
+        }
 
         private static SelectList GetUnits() => new(
             new[]

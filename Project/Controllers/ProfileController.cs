@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using FabriTrack.Models;
+using FabriTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,18 +14,18 @@ namespace FabriTrack.Controllers
         private static readonly string[] AllowedPhotoExtensions = [".jpg", ".jpeg", ".png", ".webp"];
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly IWebHostEnvironment _environment;
+        private readonly IImageStorage _imageStorage;
         private readonly ILogger<ProfileController> _logger;
 
         public ProfileController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            IWebHostEnvironment environment,
+            IImageStorage imageStorage,
             ILogger<ProfileController> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
-            _environment = environment;
+            _imageStorage = imageStorage;
             _logger = logger;
         }
 
@@ -100,13 +100,23 @@ namespace FabriTrack.Controllers
                 ModelState.AddModelError(nameof(ProfileViewModel.ProfilePhoto), "Choose a photo to upload.");
             else if (profilePhoto.Length > MaxPhotoBytes)
                 ModelState.AddModelError(nameof(ProfileViewModel.ProfilePhoto), "Choose an image no larger than 5 MB.");
+            else if (!AllowedPhotoExtensions.Contains(Path.GetExtension(profilePhoto.FileName), StringComparer.OrdinalIgnoreCase))
+                ModelState.AddModelError(nameof(ProfileViewModel.ProfilePhoto), "Only JPG, PNG and WEBP images are allowed.");
 
             if (!ModelState.IsValid)
                 return View(nameof(Index), CreateViewModel(user));
 
-            var newPhotoFileName = await SavePhotoAsync(profilePhoto!);
-            if (newPhotoFileName == null)
+            string newPhotoFileName;
+            try
+            {
+                newPhotoFileName = await _imageStorage.SaveAsync("profiles", profilePhoto!);
+            }
+            catch (ImageStorageException exception)
+            {
+                _logger.LogError(exception, "Unable to store a profile photo for user {UserId}.", user.Id);
+                ModelState.AddModelError(nameof(ProfileViewModel.ProfilePhoto), "The photo could not be uploaded. Please try again.");
                 return View(nameof(Index), CreateViewModel(user));
+            }
 
             var previousPhotoFileName = user.ProfilePhotoFileName;
             user.ProfilePhotoFileName = newPhotoFileName;
@@ -115,16 +125,18 @@ namespace FabriTrack.Controllers
             {
                 // Remove the new photo if the account update did not save.
                 user.ProfilePhotoFileName = previousPhotoFileName;
-                DeletePhoto(newPhotoFileName);
+                await DeletePhotoAsync(newPhotoFileName);
                 foreach (var error in result.Errors)
                     ModelState.AddModelError(string.Empty, error.Description);
                 return View(nameof(Index), CreateViewModel(user));
             }
 
-            if (!string.IsNullOrWhiteSpace(previousPhotoFileName))
-                DeletePhoto(previousPhotoFileName);
+            var oldPhotoCleanupFailed = !string.IsNullOrWhiteSpace(previousPhotoFileName) &&
+                !await DeletePhotoAsync(previousPhotoFileName);
 
             TempData["Success"] = "Your profile photo has been updated.";
+            if (oldPhotoCleanupFailed)
+                TempData["Error"] = "Your profile photo was updated, but its previous file could not be removed from storage.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -152,8 +164,10 @@ namespace FabriTrack.Controllers
                 return View(nameof(Index), CreateViewModel(user));
             }
 
-            DeletePhoto(previousPhotoFileName);
+            var cleanupFailed = !await DeletePhotoAsync(previousPhotoFileName);
             TempData["Success"] = "Your profile photo has been removed.";
+            if (cleanupFailed)
+                TempData["Error"] = "Your profile photo was removed, but its file could not be deleted from storage.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -163,13 +177,16 @@ namespace FabriTrack.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
                 return Challenge();
+            if (string.IsNullOrWhiteSpace(user.ProfilePhotoFileName))
+                return NotFound();
 
-            if (!TryGetPhotoPath(user.ProfilePhotoFileName, out var path) || !System.IO.File.Exists(path))
+            var photo = await _imageStorage.OpenReadAsync(user.ProfilePhotoFileName);
+            if (photo == null)
                 return NotFound();
 
             Response.Headers["Cache-Control"] = "private, no-store";
             Response.Headers["X-Content-Type-Options"] = "nosniff";
-            return PhysicalFile(path, GetPhotoContentType(user.ProfilePhotoFileName!));
+            return File(photo.Content, photo.ContentType);
         }
 
         [HttpGet, Authorize(Roles = Roles.Admin)]
@@ -180,91 +197,29 @@ namespace FabriTrack.Controllers
                 !await _userManager.IsInRoleAsync(user, Roles.Staff) ||
                 await _userManager.IsInRoleAsync(user, Roles.Admin))
                 return NotFound();
+            if (string.IsNullOrWhiteSpace(user.ProfilePhotoFileName))
+                return NotFound();
 
-            if (!TryGetPhotoPath(user.ProfilePhotoFileName, out var path) || !System.IO.File.Exists(path))
+            var photo = await _imageStorage.OpenReadAsync(user.ProfilePhotoFileName);
+            if (photo == null)
                 return NotFound();
 
             Response.Headers["Cache-Control"] = "private, no-store";
             Response.Headers["X-Content-Type-Options"] = "nosniff";
-            return PhysicalFile(path, GetPhotoContentType(user.ProfilePhotoFileName!));
+            return File(photo.Content, photo.ContentType);
         }
 
-        private async Task<string?> SavePhotoAsync(IFormFile photo)
+        private async Task<bool> DeletePhotoAsync(string fileName)
         {
-            var extension = Path.GetExtension(photo.FileName).ToLowerInvariant();
-            if (!AllowedPhotoExtensions.Contains(extension, StringComparer.Ordinal))
-            {
-                ModelState.AddModelError(nameof(ProfileViewModel.ProfilePhoto), "Only JPG, PNG and WEBP images are allowed.");
-                return null;
-            }
-
-            // Give the photo a new file name instead of using the name from the upload.
-            var fileName = $"{Guid.NewGuid():N}{extension}";
-            var directory = GetPhotoDirectory();
-            Directory.CreateDirectory(directory);
-            var path = Path.Combine(directory, fileName);
-            var saved = false;
             try
             {
-                await using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-                await photo.CopyToAsync(output);
-                saved = true;
-                return fileName;
+                await _imageStorage.DeleteAsync(fileName);
+                return true;
             }
-            finally
+            catch (ImageStorageException exception)
             {
-                if (!saved && System.IO.File.Exists(path))
-                    System.IO.File.Delete(path);
-            }
-        }
-
-        private string GetPhotoDirectory() =>
-            Path.Combine(_environment.ContentRootPath, "App_Data", "ProfilePhotos");
-
-        private static bool IsPhotoFileName(string? fileName) =>
-            fileName != null && Regex.IsMatch(
-                fileName,
-                @"\A[a-f0-9]{32}\.(?:jpg|jpeg|png|webp)\z",
-                RegexOptions.CultureInvariant);
-
-        private bool TryGetPhotoPath(string? fileName, out string path)
-        {
-            path = string.Empty;
-            // Check the saved file name before looking for it in the photo folder.
-            if (!IsPhotoFileName(fileName))
+                _logger.LogWarning(exception, "Unable to remove replaced profile photo {PhotoFileName}.", fileName);
                 return false;
-
-            path = Path.Combine(GetPhotoDirectory(), fileName!);
-            return true;
-        }
-
-        private static string GetPhotoContentType(string fileName) =>
-            Path.GetExtension(fileName).ToLowerInvariant() switch
-            {
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".png" => "image/png",
-                ".webp" => "image/webp",
-                _ => "application/octet-stream"
-            };
-
-        private void DeletePhoto(string fileName)
-        {
-            if (!IsPhotoFileName(fileName))
-                return;
-
-            try
-            {
-                var path = Path.Combine(GetPhotoDirectory(), fileName);
-                if (System.IO.File.Exists(path))
-                    System.IO.File.Delete(path);
-            }
-            catch (IOException exception)
-            {
-                _logger.LogWarning(exception, "Unable to remove replaced profile photo {PhotoFileName}.", fileName);
-            }
-            catch (UnauthorizedAccessException exception)
-            {
-                _logger.LogWarning(exception, "Unable to remove replaced profile photo {PhotoFileName}.", fileName);
             }
         }
 
@@ -277,7 +232,7 @@ namespace FabriTrack.Controllers
                 PhoneNumber = user.PhoneNumber
             };
 
-            model.CurrentPhotoUrl = IsPhotoFileName(user.ProfilePhotoFileName)
+            model.CurrentPhotoUrl = !string.IsNullOrWhiteSpace(user.ProfilePhotoFileName)
                 ? Url.Action(nameof(Photo), "Profile", new { version = user.ProfilePhotoFileName })
                 : null;
             return model;

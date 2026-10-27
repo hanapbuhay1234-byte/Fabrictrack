@@ -49,8 +49,11 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options => options.Val
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IImageStorage, ImageStorage>();
 
 var app = builder.Build();
+_ = app.Services.GetRequiredService<IImageStorage>();
 
 if (builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
 {
