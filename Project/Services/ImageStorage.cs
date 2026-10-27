@@ -248,15 +248,23 @@ namespace FabriTrack.Services
                 responseStream,
                 JsonOptions,
                 cancellationToken);
-            if (uploadedFile == null ||
-                string.IsNullOrWhiteSpace(uploadedFile.FileId) ||
-                !string.Equals(uploadedFile.FilePath, $"/{category}/{fileName}", StringComparison.Ordinal) ||
-                uploadedFile.IsPrivateFile != true)
+            if (uploadedFile == null || string.IsNullOrWhiteSpace(uploadedFile.FileId))
             {
-                throw new JsonException("ImageKit returned an unexpected upload response.");
+                throw new JsonException("ImageKit's upload response did not include a file ID.");
             }
 
-            var key = $"imagekit:{uploadedFile.FileId}:{uploadedFile.FilePath}";
+            var expectedFilePath = $"/{category}/{fileName}";
+            if (uploadedFile.FilePath != null &&
+                !string.Equals(uploadedFile.FilePath, expectedFilePath, StringComparison.Ordinal))
+            {
+                throw new JsonException("ImageKit returned an unexpected file path.");
+            }
+
+            if (uploadedFile.IsPrivateFile == false)
+                throw new JsonException("ImageKit did not mark the uploaded file as private.");
+
+            var filePath = uploadedFile.FilePath ?? expectedFilePath;
+            var key = $"imagekit:{uploadedFile.FileId}:{filePath}";
             _logger.LogInformation("Stored image object in ImageKit for category {ImageCategory}.", category);
             return key;
         }
