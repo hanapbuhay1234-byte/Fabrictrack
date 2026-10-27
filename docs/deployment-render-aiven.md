@@ -57,7 +57,7 @@ The project uses EF Core 8, so use the matching `dotnet-ef` 8.x tool. The migrat
 
 ## 4. Configure password recovery email
 
-Password recovery sends one-time ASP.NET Core Identity reset links through SMTP. Links expire after one hour. Choose an SMTP email provider and obtain its host, port, username, password, and a verified sender email address. Use the provider's SMTP credentials rather than an account login password; store the SMTP password as a Render secret.
+Password recovery sends one-time ASP.NET Core Identity reset links through SMTP. Links expire after one hour. SMTP sending is limited to 20 seconds; if it fails or times out, the page still displays the generic confirmation to avoid exposing whether an account exists, and the failure is recorded in Render logs. Choose an SMTP email provider and obtain its host, port, username, password, and a verified sender email address. Use the provider's SMTP credentials rather than an account login password; store the SMTP password as a Render secret.
 
 For typical SMTP submission, use port `587` with STARTTLS. FabriTrack requires TLS for SMTP connections. The reset URL uses the public HTTPS address of the deployed Render service, so configure that URL exactly as shown in the Render dashboard.
 
@@ -95,7 +95,7 @@ For typical SMTP submission, use port `587` with STARTTLS. FabriTrack requires T
 ## 6. Verify the deployment
 
 1. Wait for Render's deploy to complete and open the provided HTTPS URL.
-2. Check Render logs for database, migration, certificate, ImageKit configuration, or administrator-seed errors.
+2. Check Render logs for database, migration, certificate, ImageKit configuration, administrator-seed, or SMTP password-reset errors.
 3. Sign in using the administrator credentials configured for this deployment and confirm the Admin role is present.
 4. Upload a test fabric image and profile photo. Confirm both display, then restart or redeploy the Render service and confirm they still display.
 5. On the sign-in page, use **Forgot password?** with a test account and verify that the email arrives and its link allows a password reset.

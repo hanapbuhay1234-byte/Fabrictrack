@@ -68,8 +68,15 @@ namespace FabriTrack.Areas.Identity.Pages.Account
             }
 
             var user = await _userManager.FindByEmailAsync(Input.Email);
-            if (user == null || !user.EmailConfirmed)
+            if (user == null)
                 return RedirectToPage("./ForgotPasswordConfirmation");
+            if (!user.EmailConfirmed)
+            {
+                _logger.LogWarning(
+                    "Password reset email was not sent because user {UserId} does not have a confirmed email address.",
+                    user.Id);
+                return RedirectToPage("./ForgotPasswordConfirmation");
+            }
 
             try
             {
@@ -85,10 +92,11 @@ namespace FabriTrack.Areas.Identity.Pages.Account
                 if (string.IsNullOrWhiteSpace(resetUrl))
                     throw new InvalidOperationException("Could not generate the password reset URL.");
 
-                await _emailSender.SendResetLinkAsync(user.Email!, resetUrl);
+                await _emailSender.SendResetLinkAsync(user.Email!, resetUrl, HttpContext.RequestAborted);
             }
             catch (Exception exception) when (
-                exception is InvalidOperationException or System.Net.Mail.SmtpException or FormatException)
+                exception is InvalidOperationException or System.Net.Mail.SmtpException or
+                    FormatException or OperationCanceledException)
             {
                 _logger.LogError(exception, "Unable to send a password reset email for user {UserId}.", user.Id);
             }
