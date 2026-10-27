@@ -111,6 +111,9 @@
                 } else if (kind === "toggle") {
                     playTone(context, 740, 0.065, 0.22);
                     playTone(context, 990, 0.075, 0.15);
+                } else if (kind === "type") {
+                    playNoise(context, "bandpass", 2200, 0.018, 0.1);
+                    playTone(context, 480, 0.022, 0.035);
                 }
             };
 
@@ -135,6 +138,27 @@
             "[role='tab'], [role='switch'], input[type='checkbox'], input[type='radio'], select"
         );
     }
+
+    function isTextEntryTarget(target) {
+        return target.isContentEditable ||
+            target.matches(
+                "textarea, input:not([type]), input[type='text'], input[type='email'], " +
+                "input[type='password'], input[type='search'], input[type='tel'], " +
+                "input[type='url'], input[type='number']"
+            );
+    }
+
+    document.addEventListener("keydown", function (event) {
+        if (event.isComposing || event.ctrlKey || event.altKey || event.metaKey)
+            return;
+
+        var target = event.target instanceof Element ? event.target : null;
+        if (!target || !isTextEntryTarget(target))
+            return;
+
+        if (event.key.length === 1 || event.key === "Backspace" || event.key === "Delete")
+            playSound("type");
+    }, true);
 
     document.addEventListener("pointerover", function (event) {
         if (event.pointerType !== "mouse" || !window.matchMedia("(hover: hover) and (pointer: fine)").matches)
