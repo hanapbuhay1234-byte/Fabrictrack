@@ -41,13 +41,12 @@
             <span asp-validation-for="Input.Password" class="text-danger small"></span>
         </div>
 
-        <div class="text-end mb-3">
+        <div class="auth-login-options d-flex justify-content-between align-items-center mb-3">
+            <div class="form-check mb-0">
+                <input asp-for="Input.RememberMe" class="form-check-input" />
+                <label asp-for="Input.RememberMe" class="form-check-label">Remember me</label>
+            </div>
             <a asp-page="./ForgotPassword" class="small">Forgot password?</a>
-        </div>
-
-        <div class="mb-3 form-check">
-            <input asp-for="Input.RememberMe" class="form-check-input" />
-            <label asp-for="Input.RememberMe" class="form-check-label">Remember me</label>
         </div>
 
         <div class="d-grid mb-3">

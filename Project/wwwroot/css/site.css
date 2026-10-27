@@ -1332,6 +1332,9 @@ table.data-table thead th[data-sort] {
 .auth-page .page-footer { text-align: center; color: rgba(255,255,255,0.62); }
 
 .auth-card a { color: var(--color-indigo); font-weight:600; }
+.auth-card a.btn-primary,
+.auth-card a.btn-primary:hover,
+.auth-card a.btn-primary:focus { color: #fff; text-decoration: none; }
 
 /* Reports page small adjustments */
 .report-filters .form-label { font-size: 0.65rem; letter-spacing: 0.06em; color: var(--color-ink-soft); }
