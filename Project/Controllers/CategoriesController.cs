@@ -13,28 +13,51 @@ namespace FabriTrack.Controllers
         private readonly ApplicationDbContext _context;
         public CategoriesController(ApplicationDbContext context) => _context = context;
 
-        public async Task<IActionResult> Index() => View(await BuildIndexViewModel());
+        public async Task<IActionResult> Index(string? search, string? sort)
+            => View(await BuildIndexViewModel(search, sort));
 
-        private async Task<CategoriesIndexViewModel> BuildIndexViewModel()
+        private async Task<CategoriesIndexViewModel> BuildIndexViewModel(string? search = null, string? sort = null)
         {
-            // Load the product counts along with the category list.
-            var categories = await _context.Categories
-                .OrderBy(category => category.Name)
-                .Select(category => new CategoryListItemViewModel
-                {
-                    CategoryId = category.CategoryId,
-                    Name = category.Name,
-                    Description = category.Description,
-                    ActiveProductCount = category.Fabrics.Count(fabric => fabric.IsActive),
-                    ArchivedProductCount = category.Fabrics.Count(fabric => !fabric.IsActive)
-                })
-                .ToListAsync();
+            var normalizedSort = string.IsNullOrWhiteSpace(sort) ? "date-desc" : sort.Trim().ToLowerInvariant();
+            var normalizedSearch = search?.Trim();
+            var query = _context.Categories.AsNoTracking().AsQueryable();
 
-            return new CategoriesIndexViewModel { Categories = categories };
+            if (!string.IsNullOrWhiteSpace(normalizedSearch))
+                query = query.Where(category => category.Name.Contains(normalizedSearch) ||
+                    (category.Description != null && category.Description.Contains(normalizedSearch)));
+
+            var categories = await query.Select(category => new CategoryListItemViewModel
+            {
+                CategoryId = category.CategoryId,
+                Name = category.Name,
+                Description = category.Description,
+                CreatedAt = category.CreatedAt,
+                ActiveProductCount = category.Fabrics.Count(fabric => fabric.IsActive),
+                ArchivedProductCount = category.Fabrics.Count(fabric => !fabric.IsActive)
+            }).ToListAsync();
+
+            categories = normalizedSort switch
+            {
+                "name-asc" => categories.OrderBy(category => category.Name).ToList(),
+                "name-desc" => categories.OrderByDescending(category => category.Name).ToList(),
+                "date-asc" => categories.OrderBy(category => category.CreatedAt).ToList(),
+                "active-desc" => categories.OrderByDescending(category => category.ActiveProductCount).ThenBy(category => category.Name).ToList(),
+                "active-asc" => categories.OrderBy(category => category.ActiveProductCount).ThenBy(category => category.Name).ToList(),
+                _ => categories.OrderByDescending(category => category.CreatedAt).ThenByDescending(category => category.CategoryId).ToList()
+            };
+
+            return new CategoriesIndexViewModel
+            {
+                Categories = categories,
+                Search = normalizedSearch,
+                Sort = normalizedSort == "name-asc" || normalizedSort == "name-desc" || normalizedSort == "date-asc" ||
+                    normalizedSort == "active-desc" || normalizedSort == "active-asc"
+                    ? normalizedSort : "date-desc"
+            };
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind(Prefix = "CreateCategory")] Category category)
+        public async Task<IActionResult> Create([Bind(Prefix = "CreateCategory")] Category category, string? search, string? sort)
         {
             if (ModelState.IsValid)
             {
@@ -44,14 +67,14 @@ namespace FabriTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var viewModel = await BuildIndexViewModel();
+            var viewModel = await BuildIndexViewModel(search, sort);
             viewModel.CreateCategory = category;
             viewModel.OpenCreateModal = true;
             return View(nameof(Index), viewModel);
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit([Bind(Prefix = "EditCategory")] Category category)
+        public async Task<IActionResult> Edit([Bind(Prefix = "EditCategory")] Category category, string? search, string? sort)
         {
             if (category.CategoryId <= 0) return NotFound();
             if (ModelState.IsValid)
@@ -66,7 +89,7 @@ namespace FabriTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var viewModel = await BuildIndexViewModel();
+            var viewModel = await BuildIndexViewModel(search, sort);
             viewModel.EditCategory = category;
             viewModel.OpenEditModal = true;
             return View(nameof(Index), viewModel);

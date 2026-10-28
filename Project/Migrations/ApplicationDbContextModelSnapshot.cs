@@ -156,6 +156,9 @@ namespace Project.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(250)
                         .HasColumnType("varchar(250)");
@@ -173,18 +176,21 @@ namespace Project.Migrations
                         new
                         {
                             CategoryId = 1,
+                            CreatedAt = new DateTime(2026, 10, 28, 14, 15, 12, 754, DateTimeKind.Utc).AddTicks(1225),
                             Description = "Cotton-based fabrics",
                             Name = "Cotton"
                         },
                         new
                         {
                             CategoryId = 2,
+                            CreatedAt = new DateTime(2026, 10, 28, 14, 15, 12, 754, DateTimeKind.Utc).AddTicks(1229),
                             Description = "Silk-based fabrics",
                             Name = "Silk"
                         },
                         new
                         {
                             CategoryId = 3,
+                            CreatedAt = new DateTime(2026, 10, 28, 14, 15, 12, 754, DateTimeKind.Utc).AddTicks(1230),
                             Description = "Linen-based fabrics",
                             Name = "Linen"
                         });
@@ -574,12 +580,10 @@ namespace Project.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("ProviderKey")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("ProviderDisplayName")
                         .HasColumnType("longtext");
@@ -616,12 +620,10 @@ namespace Project.Migrations
                         .HasColumnType("varchar(255)");
 
                     b.Property<string>("LoginProvider")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("Name")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("Value")
                         .HasColumnType("longtext");

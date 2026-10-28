@@ -8,6 +8,8 @@ namespace FabriTrack.Models
         public Category EditCategory { get; set; } = new();
         public bool OpenCreateModal { get; set; }
         public bool OpenEditModal { get; set; }
+        public string? Search { get; set; }
+        public string Sort { get; set; } = "date-desc";
 
         // Adds up the product counts for all categories in the list.
         public int ActiveProductCount => Categories.Sum(category => category.ActiveProductCount);

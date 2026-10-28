@@ -118,18 +118,25 @@
                             <td>
                                 @if (!string.IsNullOrWhiteSpace(entry.Details))
                                 {
-                                    using var details = JsonDocument.Parse(entry.Details);
-                                    if (details.RootElement.TryGetProperty("Changed fields", out var changedFields))
+                                    try
                                     {
-                                        <div class="audit-detail-fields">@string.Join(", ", changedFields.EnumerateArray().Select(field => field.GetString()))</div>
+                                        using var details = JsonDocument.Parse(entry.Details);
+                                        if (details.RootElement.TryGetProperty("Changed fields", out var changedFields))
+                                        {
+                                            <div class="audit-detail-fields">@string.Join(", ", changedFields.EnumerateArray().Select(field => field.GetString()))</div>
+                                        }
+                                        if (details.RootElement.TryGetProperty("Quantity change", out var quantity))
+                                        {
+                                            <div>Quantity: @quantity</div>
+                                        }
+                                        if (details.RootElement.TryGetProperty("Reason", out var reason))
+                                        {
+                                            <small class="audit-detail-reason">@reason.GetString()</small>
+                                        }
                                     }
-                                    if (details.RootElement.TryGetProperty("Quantity change", out var quantity))
+                                    catch (JsonException)
                                     {
-                                        <div>Quantity: @quantity</div>
-                                    }
-                                    if (details.RootElement.TryGetProperty("Reason", out var reason))
-                                    {
-                                        <small class="audit-detail-reason">@reason.GetString()</small>
+                                        <span>@entry.Details</span>
                                     }
                                 }
                                 else

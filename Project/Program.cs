@@ -63,9 +63,13 @@ if (builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
     app.UseForwardedHeaders();
 }
 
-// Set up the required roles and starting data before the app begins serving pages.
+// Apply pending EF Core migrations before querying application tables.
 using (var scope = app.Services.CreateScope())
 {
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
+
+    // Set up the required roles and starting data before the app begins serving pages.
     await SeedData.InitializeAsync(scope.ServiceProvider);
 }
 

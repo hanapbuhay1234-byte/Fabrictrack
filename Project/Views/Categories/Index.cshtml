@@ -19,6 +19,28 @@
     </div>
 </div>
 
+<form method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-md-5">
+        <label class="form-label" for="categorySearch">Search</label>
+        <input id="categorySearch" name="search" value="@Model.Search" type="search" class="form-control" placeholder="Category name or description" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label" for="categorySort">Sort by</label>
+        <select id="categorySort" name="sort" class="form-select">
+            <option value="date-desc" selected="@(Model.Sort == "date-desc")">Recently added</option>
+            <option value="date-asc" selected="@(Model.Sort == "date-asc")">Oldest added</option>
+            <option value="name-asc" selected="@(Model.Sort == "name-asc")">Name A to Z</option>
+            <option value="name-desc" selected="@(Model.Sort == "name-desc")">Name Z to A</option>
+            <option value="active-desc" selected="@(Model.Sort == "active-desc")">Most active products</option>
+            <option value="active-asc" selected="@(Model.Sort == "active-asc")">Fewest active products</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
 @if (categories.Count == 0)
 {
     <div class="empty-state text-center py-5">
@@ -53,6 +75,7 @@ else
                 <tr>
                     <th data-sort>Category</th>
                     <th data-sort>Description</th>
+                    <th data-sort>Date added</th>
                     <th data-sort>Products</th>
                     <th><span class="visually-hidden">Actions</span></th>
                 </tr>
@@ -67,6 +90,10 @@ else
                         </td>
                         <td class="category-description-cell">
                             @(string.IsNullOrWhiteSpace(category.Description) ? "No description" : category.Description)
+                        </td>
+                        <td class="text-nowrap">
+                            @category.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")<br />
+                            <small class="text-muted">@category.CreatedAt.ToLocalTime().ToString("h:mm:ss tt")</small>
                         </td>
                         <td class="category-product-counts">
                             @if (category.ActiveProductCount > 0)
@@ -124,6 +151,8 @@ else
         <div class="modal-content">
             <form asp-action="Create" method="post">
                 @Html.AntiForgeryToken()
+                <input type="hidden" name="search" value="@Model.Search" />
+                <input type="hidden" name="sort" value="@Model.Sort" />
                 <div class="modal-header">
                     <div>
                         <h5 class="modal-title" id="createCategoryModalTitle"><i class="bi bi-plus-circle me-2"></i>Add category</h5>
@@ -160,6 +189,8 @@ else
         <div class="modal-content">
             <form asp-action="Edit" method="post" id="editCategoryForm">
                 @Html.AntiForgeryToken()
+                <input type="hidden" name="search" value="@Model.Search" />
+                <input type="hidden" name="sort" value="@Model.Sort" />
                 <input asp-for="EditCategory.CategoryId" type="hidden" />
                 <div class="modal-header">
                     <div>
