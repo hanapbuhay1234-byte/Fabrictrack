@@ -108,9 +108,25 @@
         }
     });
 
-    /* ---------------- Page load micro-interaction ---------------- */
+    /* ---------------- Module element entrance animations ---------------- */
     document.addEventListener('DOMContentLoaded', function () {
         if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        var main = document.querySelector('main[role="main"]');
+        if (main) {
+            var elements = main.querySelectorAll(
+                '.page-header, .table-container, .stat-card, .category-summary-card, ' +
+                '.customer-summary-card, .supplier-summary-card, .audit-log-panel, ' +
+                '.export-panel, .inventory-summary, section, article'
+            );
+            var limit = 18;
+            elements.forEach(function (element, index) {
+                if (element.closest('[hidden]')) return;
+                element.classList.add('ft-enter');
+                element.style.setProperty('--ft-enter-delay', Math.min(index, limit) * 45 + 'ms');
+            });
+        }
+
         document.body.classList.add('ft-loaded');
     });
 

@@ -55,6 +55,34 @@
     }
 }
 
+/* Shared module entrance animation */
+.ft-enter {
+    opacity: 0;
+}
+.ft-loaded .ft-enter {
+    animation: ft-enter-up 420ms cubic-bezier(.2,.75,.25,1) both;
+    animation-delay: var(--ft-enter-delay, 0ms);
+}
+.ft-loaded main .table-container tbody tr,
+.ft-loaded main .data-table tbody tr {
+    animation: ft-enter-row 280ms ease-out both;
+}
+.ft-loaded main tbody tr:nth-child(1) { animation-delay: 40ms; }
+.ft-loaded main tbody tr:nth-child(2) { animation-delay: 70ms; }
+.ft-loaded main tbody tr:nth-child(3) { animation-delay: 100ms; }
+.ft-loaded main tbody tr:nth-child(4) { animation-delay: 130ms; }
+.ft-loaded main tbody tr:nth-child(5) { animation-delay: 160ms; }
+.ft-loaded main tbody tr:nth-child(6) { animation-delay: 190ms; }
+.ft-loaded main tbody tr:nth-child(n+7) { animation-delay: 220ms; }
+@keyframes ft-enter-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ft-enter-row {
+    from { opacity: 0; transform: translateX(-4px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
 /* Focus outlines for accessibility */
 :focus {
     outline: 3px solid color-mix(in srgb, var(--ft-primary) 60%, #fff);
