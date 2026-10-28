@@ -1,0 +1,159 @@
+@model FabriTrack.Models.ExportDataViewModel
+@{
+    ViewData["Title"] = "Export Data";
+}
+
+<div class="page-header">
+    <div>
+        <h2><i class="bi bi-file-earmark-arrow-down me-2"></i>Export data</h2>
+        <p class="text-muted mb-0">Download selected system records as CSV files for backup, reporting, or spreadsheet use.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <section class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <form asp-action="Preview" method="get" id="exportPreviewForm">
+                    <div class="mb-4">
+                        <label class="form-label" for="dataType">Data to export</label>
+                        <select id="dataType" name="dataType" class="form-select">
+                            <option value="inventory" selected="@(Model.DataType == "inventory")">Product inventory</option>
+                            <option value="low-stock" selected="@(Model.DataType == "low-stock")">Low-stock products</option>
+                            <option value="sales" selected="@(Model.DataType == "sales")">Sales transactions</option>
+                            <option value="customers" selected="@(Model.DataType == "customers")">Customers</option>
+                            <option value="suppliers" selected="@(Model.DataType == "suppliers")">Suppliers</option>
+                            <option value="categories" selected="@(Model.DataType == "categories")">Categories</option>
+                            <option value="users" selected="@(Model.DataType == "users")">User accounts</option>
+                            <option value="inventory-movements" selected="@(Model.DataType == "inventory-movements")">Inventory transactions</option>
+                            <option value="audit-logs" selected="@(Model.DataType == "audit-logs")">Audit logs</option>
+                            <option value="login-activity" selected="@(Model.DataType == "login-activity")">Login activity</option>
+                        </select>
+                    </div>
+
+                    <div class="row g-3 mb-4 export-filter export-date-filter">
+                        <div class="col-md-6">
+                            <label class="form-label" for="startDate">Start date</label>
+                            <input id="startDate" name="startDate" type="date" class="form-control" value="@(Model.StartDate?.ToString("yyyy-MM-dd") ?? "")" />
+                            <small class="text-muted">Used by sales, inventory transactions, audit logs, and login activity.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="endDate">End date</label>
+                            <input id="endDate" name="endDate" type="date" class="form-control" value="@(Model.EndDate?.ToString("yyyy-MM-dd") ?? "")" />
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4 export-filter export-inventory-filter">
+                        <div class="col-md-6">
+                            <label class="form-label" for="categoryId">Category filter</label>
+                            <select id="categoryId" name="categoryId" class="form-select" asp-items="ViewBag.Categories">
+                                <option value="">All categories</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="supplierId">Supplier filter</label>
+                            <select id="supplierId" name="supplierId" class="form-select" asp-items="ViewBag.Suppliers">
+                                <option value="">All suppliers</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-4 mb-4">
+                        <div class="form-check export-filter export-archive-filter">
+                            <input id="includeArchived" name="includeArchived" type="checkbox" value="true" class="form-check-input" @(Model.IncludeArchived ? "checked=\"checked\"" : "") />
+                            <label class="form-check-label" for="includeArchived">Include archived products</label>
+                        </div>
+                        <div class="form-check export-filter export-void-filter">
+                            <input id="includeVoided" name="includeVoided" type="checkbox" value="true" class="form-check-input" @(Model.IncludeVoided ? "checked=\"checked\"" : "") />
+                            <label class="form-check-label" for="includeVoided">Include voided sales</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-table me-1"></i>Generate records preview
+                    </button>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-xl-4">
+        <section class="card shadow-sm border-0 h-100">
+            <div class="card-body p-4">
+                <h3 class="h5 mb-3">Export protection</h3>
+                <ul class="mb-0 ps-3 text-muted">
+                    <li>Only administrators can use Data Export.</li>
+                    <li>Passwords and security tokens are never included.</li>
+                    <li>Text values are protected against spreadsheet formulas.</li>
+                    <li>Each completed export is recorded in the audit log.</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+</div>
+
+@if (Model.HasPreview)
+{
+    <section class="card shadow-sm border-0 mt-4" aria-labelledby="exportPreviewTitle">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                    <h3 id="exportPreviewTitle" class="h5 mb-1">@Model.DataTypeLabel record preview</h3>
+                    <p class="text-muted mb-0">Showing @Model.Rows.Count of @Model.TotalRows total matching record@(Model.TotalRows == 1 ? "" : "s").</p>
+                </div>
+                <form asp-action="Download" method="get">
+                    <input type="hidden" name="dataType" value="@Model.DataType" />
+                    <input type="hidden" name="startDate" value="@(Model.StartDate?.ToString("yyyy-MM-dd"))" />
+                    <input type="hidden" name="endDate" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
+                    <input type="hidden" name="categoryId" value="@Model.CategoryId" />
+                    <input type="hidden" name="supplierId" value="@Model.SupplierId" />
+                    <input type="hidden" name="includeArchived" value="@(Model.IncludeArchived ? "true" : "false")" />
+                    <input type="hidden" name="includeVoided" value="@(Model.IncludeVoided ? "true" : "false")" />
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-download me-1"></i>Export CSV</button>
+                </form>
+            </div>
+            @if (Model.PreviewIsLimited)
+            {
+                <div class="alert alert-info py-2">This preview is limited to 500 rows. The CSV export will contain all matching records.</div>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <div class="text-center text-muted py-5"><i class="bi bi-inbox display-6 d-block mb-2"></i><strong>No matching records</strong></div>
+            }
+            else
+            {
+                <div class="table-responsive border rounded">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead class="table-light"><tr>@foreach (var column in Model.Columns) { <th>@column</th> }</tr></thead>
+                        <tbody>
+                            @foreach (var row in Model.Rows)
+                            {
+                                <tr>@foreach (var value in row) { <td>@value</td> }</tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@section Scripts {
+<script>
+(function () {
+    const typeSelect = document.getElementById('dataType');
+    if (!typeSelect) return;
+    function updateFilters() {
+        const type = typeSelect.value;
+        const inventoryTypes = ['inventory', 'low-stock'];
+        const dateTypes = ['sales', 'inventory-movements', 'audit-logs', 'login-activity'];
+        document.querySelectorAll('.export-date-filter').forEach(element => element.classList.toggle('d-none', !dateTypes.includes(type)));
+        document.querySelectorAll('.export-inventory-filter').forEach(element => element.classList.toggle('d-none', !inventoryTypes.includes(type)));
+        document.querySelectorAll('.export-archive-filter').forEach(element => element.classList.toggle('d-none', type !== 'inventory'));
+        document.querySelectorAll('.export-void-filter').forEach(element => element.classList.toggle('d-none', type !== 'sales'));
+    }
+    typeSelect.addEventListener('change', updateFilters);
+    updateFilters();
+})();
+</script>
+}

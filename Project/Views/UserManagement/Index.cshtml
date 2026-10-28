@@ -8,9 +8,14 @@
         <h2><i class="bi bi-person-gear me-2"></i>User management</h2>
         <p class="text-muted mb-0">Create and manage staff access. Staff receive a one-time password and must change it at first sign-in.</p>
     </div>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStaffModal">
-        <i class="bi bi-person-plus me-1"></i>Add staff
-    </button>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-controller="ExportData" asp-action="Download" asp-route-dataType="users" class="btn btn-outline-primary">
+            <i class="bi bi-download me-1"></i>Export users
+        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createStaffModal">
+            <i class="bi bi-person-plus me-1"></i>Add staff
+        </button>
+    </div>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.TemporaryPassword))

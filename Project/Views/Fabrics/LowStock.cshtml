@@ -12,7 +12,15 @@
         <h2><i class="bi bi-exclamation-triangle text-warning me-2"></i>Stock alerts</h2>
         <p class="text-muted mb-0">Prioritized products that need attention based on their individual reorder points.</p>
     </div>
-    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-box-seam me-1"></i>Open inventory</a>
+    <div class="d-flex flex-wrap gap-2">
+        @if (User.IsInRole(FabriTrack.Models.Roles.Admin))
+        {
+            <a asp-controller="ExportData" asp-action="Download" asp-route-dataType="low-stock" class="btn btn-outline-primary">
+                <i class="bi bi-download me-1"></i>Export low stock
+            </a>
+        }
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-box-seam me-1"></i>Open inventory</a>
+    </div>
 </div>
 
 @if (products.Count == 0)

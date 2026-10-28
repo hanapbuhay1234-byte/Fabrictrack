@@ -9,9 +9,14 @@
         <h2><i class="bi bi-truck me-2"></i>Suppliers</h2>
         <p class="text-muted mb-0">Manage supplier contacts and see which products they provide.</p>
     </div>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSupplierModal">
-        <i class="bi bi-plus-lg me-1"></i>Add supplier
-    </button>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-controller="ExportData" asp-action="Download" asp-route-dataType="suppliers" class="btn btn-outline-primary">
+            <i class="bi bi-download me-1"></i>Export suppliers
+        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSupplierModal">
+            <i class="bi bi-plus-lg me-1"></i>Add supplier
+        </button>
+    </div>
 </div>
 
 @if (suppliers.Count == 0)

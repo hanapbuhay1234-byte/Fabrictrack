@@ -373,16 +373,13 @@ namespace FabriTrack.Controllers
             };
         }
 
-        private static string CsvField(string value)
+        private static string CsvField(string? value)
         {
-            var safeValue = value.TrimStart().StartsWith('=') ||
-                value.TrimStart().StartsWith('+') ||
-                value.TrimStart().StartsWith('-') ||
-                value.TrimStart().StartsWith('@') ||
-                value.StartsWith('\t') ||
-                value.StartsWith('\r')
-                ? "'" + value
-                : value;
+            var text = value ?? string.Empty;
+            var trimmedValue = text.TrimStart();
+            var safeValue = trimmedValue.Length > 0 && trimmedValue[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
+                ? "'" + text
+                : text;
             return $"\"{safeValue.Replace("\"", "\"\"")}\"";
         }
 
